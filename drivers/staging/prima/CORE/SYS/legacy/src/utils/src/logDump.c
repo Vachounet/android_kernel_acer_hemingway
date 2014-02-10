@@ -82,11 +82,7 @@ logDump.c
 #include "wlan_qct_wda.h"
 
 #define HAL_LOG_DUMP_CMD_START 0
-
-/* Dump command id for Host modules starts from 300 onwards,
- * hence do not extend the HAL commands beyond 300.
- */
-#define HAL_LOG_DUMP_CMD_END 299
+#define HAL_LOG_DUMP_CMD_END 350
 
 static int debug;
 

@@ -294,9 +294,9 @@ limProcessDisassocFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession
     pStaDs->mlmStaContext.disassocReason = (tSirMacReasonCodes) reasonCode;
 
     // Issue Disassoc Indication to SME.
-    vos_mem_copy((tANI_U8 *) &mlmDisassocInd.peerMacAddr,
-                 (tANI_U8 *) pStaDs->staAddr,
-                 sizeof(tSirMacAddr));
+    palCopyMemory( pMac->hHdd, (tANI_U8 *) &mlmDisassocInd.peerMacAddr,
+                  (tANI_U8 *) pStaDs->staAddr,
+                  sizeof(tSirMacAddr));
     mlmDisassocInd.reasonCode =
         (tANI_U8) pStaDs->mlmStaContext.disassocReason;
     mlmDisassocInd.disassocTrigger = eLIM_PEER_ENTITY_DISASSOC;
@@ -314,13 +314,20 @@ limProcessDisassocFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession
         PELOGE(limLog(pMac, LOGE, FL("received Disassoc from AP while waiting for Reassoc Rsp"));)
      
         if (psessionEntry->limAssocResponseData) {
-            vos_mem_free(psessionEntry->limAssocResponseData);
+            palFreeMemory(pMac->hHdd, psessionEntry->limAssocResponseData);
             psessionEntry->limAssocResponseData = NULL;                            
         }
 
         limRestorePreReassocState(pMac,eSIR_SME_REASSOC_REFUSED, reasonCode,psessionEntry);
         return;
     }
+#if defined(FEATURE_WLAN_TDLS) && defined(FEATURE_WLAN_TDLS_OXYGEN_DISAPPEAR_AP)
+    if ((TRUE == pMac->lim.gLimTDLSOxygenSupport) &&
+        (limGetTDLSPeerCount(pMac, psessionEntry) != 0)) {
+            limTDLSDisappearAPTrickInd(pMac, pStaDs, psessionEntry);
+            return;
+    }
+#endif
 
     limPostSmeMessage(pMac, LIM_MLM_DISASSOC_IND,
                       (tANI_U32 *) &mlmDisassocInd);

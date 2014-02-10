@@ -276,14 +276,9 @@ static void csrNeighborRoamTriggerHandoff(tpAniSirGlobal pMac,
 #endif
     )
     {
-        if ((eCSR_NEIGHBOR_ROAM_STATE_REPORT_SCAN == pNeighborRoamInfo->neighborRoamState) ||
-            (eSME_ROAM_TRIGGER_FAST_ROAM == pNeighborRoamInfo->cfgRoamEn))
+        if (eCSR_NEIGHBOR_ROAM_STATE_REPORT_SCAN == pNeighborRoamInfo->neighborRoamState)
         {
             csrNeighborRoamIssuePreauthReq(pMac);
-            pNeighborRoamInfo->cfgRoamEn = eSME_ROAM_TRIGGER_NONE;
-            vos_mem_set(&pNeighborRoamInfo->cfgRoambssId[0],
-                        sizeof(pNeighborRoamInfo->cfgRoambssId),
-                        0xFF);
         }
         else
         {
@@ -318,16 +313,11 @@ static void csrNeighborRoamTriggerHandoff(tpAniSirGlobal pMac,
             {
                 if ((eCSR_NEIGHBOR_ROAM_STATE_REPORT_SCAN == pNeighborRoamInfo->neighborRoamState)
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
-                || csrRoamIsRoamOffloadScanEnabled(pMac) ||
-                (eSME_ROAM_TRIGGER_FAST_ROAM == pNeighborRoamInfo->cfgRoamEn)
+                || csrRoamIsRoamOffloadScanEnabled(pMac)
 #endif
                 )
                 {
                     csrNeighborRoamIssuePreauthReq(pMac);
-                    pNeighborRoamInfo->cfgRoamEn = eSME_ROAM_TRIGGER_NONE;
-                    vos_mem_set(&pNeighborRoamInfo->cfgRoambssId[0],
-                                sizeof(pNeighborRoamInfo->cfgRoambssId),
-                                0xFF);
                 }
                 else
                 {
@@ -482,21 +472,30 @@ VOS_STATUS csrNeighborRoamSetLookupRssiThreshold(tpAniSirGlobal pMac, v_U8_t nei
     if (eCSR_NEIGHBOR_ROAM_STATE_CONNECTED == pNeighborRoamInfo->neighborRoamState)
     {
         NEIGHBOR_ROAM_DEBUG(pMac, LOG2, FL("Currently in CONNECTED state, so deregister all and re-register for DOWN event again"));
-
-        pMac->roam.neighborRoamInfo.cfgParams.neighborLookupThreshold = neighborLookupRssiThreshold;
-        pNeighborRoamInfo->currentNeighborLookupThreshold = pMac->roam.neighborRoamInfo.cfgParams.neighborLookupThreshold;
-
         /* De-register existing lookup UP/DOWN, Rssi indications */
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
         if (pMac->roam.configParam.isRoamOffloadScanEnabled)
         {
-            csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_UPDATE_CFG, REASON_LOOKUP_THRESH_CHANGED);
+            csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_STOP, REASON_DISCONNECTED);
         }
         else
         {
 #endif
            csrNeighborRoamDeregAllRssiIndication(pMac);
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+        }
+#endif
+        pMac->roam.neighborRoamInfo.cfgParams.neighborLookupThreshold = neighborLookupRssiThreshold;
+        pNeighborRoamInfo->currentNeighborLookupThreshold = pMac->roam.neighborRoamInfo.cfgParams.neighborLookupThreshold;
 
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+        if (pMac->roam.configParam.isRoamOffloadScanEnabled)
+        {
+            csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_START, REASON_CONNECT);
+        }
+        else
+        {
+#endif
            NEIGHBOR_ROAM_DEBUG(pMac, LOG2,
            FL("Registering neighbor lookup DOWN event with TL, RSSI = %d"),
            pNeighborRoamInfo->currentNeighborLookupThreshold);
@@ -553,41 +552,39 @@ VOS_STATUS csrNeighborRoamReassocIndCallback(v_PVOID_t pAdapter,
     tpAniSirGlobal pMac = PMAC_STRUCT( pUserCtxt );
     tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
     VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;   
-
-    if (eSME_ROAM_TRIGGER_FAST_ROAM != pNeighborRoamInfo->cfgRoamEn)
-    {
-        NEIGHBOR_ROAM_DEBUG(pMac, LOG2, FL("Deregistering DOWN event reassoc callback with TL. Threshold RSSI = %d Reported RSSI = %d"),
+ 
+    NEIGHBOR_ROAM_DEBUG(pMac, LOG2, FL("Deregistering DOWN event reassoc callback with TL. Threshold RSSI = %d Reported RSSI = %d"),
                          pNeighborRoamInfo->cfgParams.neighborReassocThreshold * (-1),
                          avgRssi);
 
-        vosStatus = WLANTL_DeregRSSIIndicationCB(pMac->roam.gVosContext, (v_S7_t)pNeighborRoamInfo->cfgParams.neighborReassocThreshold * (-1),
+    vosStatus = WLANTL_DeregRSSIIndicationCB(pMac->roam.gVosContext, (v_S7_t)pNeighborRoamInfo->cfgParams.neighborReassocThreshold * (-1),
                                                         WLANTL_HO_THRESHOLD_DOWN, 
                                                         csrNeighborRoamReassocIndCallback,
                                                         VOS_MODULE_ID_SME);
                         
-        if(!VOS_IS_STATUS_SUCCESS(vosStatus))
-        {
-            //err msg
-            smsLog(pMac, LOGW, FL(" Couldn't deregister csrNeighborRoamReassocIndCallback with TL: Status = %d"), vosStatus);
-        }
-
-        NEIGHBOR_ROAM_DEBUG(pMac, LOG2, FL("Rcvd reassoc notification-deregister UP indication. Threshold RSSI = %d Reported RSSI = %d"),
-                            NEIGHBOR_ROAM_LOOKUP_UP_THRESHOLD * (-1), avgRssi);
-        vosStatus = WLANTL_DeregRSSIIndicationCB(pMac->roam.gVosContext,
-                           (v_S7_t)NEIGHBOR_ROAM_LOOKUP_UP_THRESHOLD * (-1),
-                           WLANTL_HO_THRESHOLD_UP,
-                           csrNeighborRoamNeighborLookupUPCallback,
-                           VOS_MODULE_ID_SME);
-
-       if(!VOS_IS_STATUS_SUCCESS(vosStatus))
-       {
-           //err msg
-           smsLog(pMac, LOGW, FL(" Couldn't deregister csrNeighborRoamNeighborLookupUPCallback with TL: Status = %d"), vosStatus);
-       }
+    if(!VOS_IS_STATUS_SUCCESS(vosStatus))
+    {
+        //err msg
+        smsLog(pMac, LOGW, FL(" Couldn't deregister csrNeighborRoamReassocIndCallback with TL: Status = %d"), vosStatus);
     }
+    
+    NEIGHBOR_ROAM_DEBUG(pMac, LOG2, FL("Rcvd reassoc notification-deregister UP indication. Threshold RSSI = %d Reported RSSI = %d"),
+            NEIGHBOR_ROAM_LOOKUP_UP_THRESHOLD * (-1), avgRssi);
+    vosStatus = WLANTL_DeregRSSIIndicationCB(pMac->roam.gVosContext,
+                        (v_S7_t)NEIGHBOR_ROAM_LOOKUP_UP_THRESHOLD * (-1),
+                        WLANTL_HO_THRESHOLD_UP,
+                        csrNeighborRoamNeighborLookupUPCallback,
+                        VOS_MODULE_ID_SME);
+                        
+    if(!VOS_IS_STATUS_SUCCESS(vosStatus))
+    {
+        //err msg
+        smsLog(pMac, LOGW, FL(" Couldn't deregister csrNeighborRoamNeighborLookupUPCallback with TL: Status = %d"), vosStatus);
+    }
+
     /* We dont need to run this timer any more. */
-    vos_timer_stop(&pNeighborRoamInfo->neighborResultsRefreshTimer);
-    vos_timer_stop(&pNeighborRoamInfo->emptyScanRefreshTimer);
+    palTimerStop(pMac->hHdd, pNeighborRoamInfo->neighborResultsRefreshTimer);
+    palTimerStop(pMac->hHdd, pNeighborRoamInfo->emptyScanRefreshTimer);
 
     csrNeighborRoamTriggerHandoff(pMac, pNeighborRoamInfo);
 
@@ -621,18 +618,18 @@ static void csrNeighborRoamResetCfgListChanScanControlInfo(tpAniSirGlobal pMac)
         tpCsrNeighborRoamControlInfo pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
 
         /* Stop neighbor scan timer */
-        vos_timer_stop(&pNeighborRoamInfo->neighborScanTimer);
+        palTimerStop(pMac->hHdd, pNeighborRoamInfo->neighborScanTimer);
 
         /* Stop neighbor scan results refresh timer */
-        vos_timer_stop(&pNeighborRoamInfo->neighborResultsRefreshTimer);
+        palTimerStop(pMac->hHdd, pNeighborRoamInfo->neighborResultsRefreshTimer);
 
         /* Stop empty scan results refresh timer */
-        vos_timer_stop(&pNeighborRoamInfo->emptyScanRefreshTimer);
+        palTimerStop(pMac->hHdd, pNeighborRoamInfo->emptyScanRefreshTimer);
 
         /* Abort any ongoing scan */
         if (eANI_BOOLEAN_TRUE == pNeighborRoamInfo->scanRspPending)
         {
-                csrScanAbortMacScan(pMac, pNeighborRoamInfo->csrSessionId);
+                csrScanAbortMacScan(pMac);
         }
         pNeighborRoamInfo->scanRspPending = eANI_BOOLEAN_FALSE;
 
@@ -756,8 +753,8 @@ void csrNeighborRoamResetConnectedStateControlInfo(tpAniSirGlobal pMac)
     csrNeighborRoamFreeRoamableBSSList(pMac, &pNeighborRoamInfo->roamableAPList);
     
  /* We dont need to run this timer any more. */
-    vos_timer_stop(&pNeighborRoamInfo->neighborResultsRefreshTimer);
-    vos_timer_stop(&pNeighborRoamInfo->emptyScanRefreshTimer);
+    palTimerStop(pMac->hHdd, pNeighborRoamInfo->neighborResultsRefreshTimer);    
+    palTimerStop(pMac->hHdd, pNeighborRoamInfo->emptyScanRefreshTimer);
 
 #ifdef WLAN_FEATURE_VOWIFI_11R
     /* Do not free up the preauth done list here */
@@ -788,9 +785,9 @@ void csrNeighborRoamResetReportScanStateControlInfo(tpAniSirGlobal pMac)
 #endif
 
     /* Stop scan refresh timer */
-    vos_timer_stop(&pNeighborRoamInfo->neighborResultsRefreshTimer);
+    palTimerStop(pMac->hHdd, pNeighborRoamInfo->neighborResultsRefreshTimer);
     /* Stop empty scan results refresh timer */
-    vos_timer_stop(&pNeighborRoamInfo->emptyScanRefreshTimer);
+    palTimerStop(pMac->hHdd, pNeighborRoamInfo->emptyScanRefreshTimer);
      /* Purge roamable AP list */
        csrNeighborRoamFreeRoamableBSSList(pMac, &pNeighborRoamInfo->roamableAPList); 
     return;
@@ -1183,9 +1180,10 @@ eHalStatus csrNeighborRoamPreauthRspHandler(tpAniSirGlobal pMac, tSirRetStatus l
           }
 
           /* Start the neighbor results refresh timer and transition to REPORT_SCAN state to perform scan again */
-          status = vos_timer_start(&pNeighborRoamInfo->neighborResultsRefreshTimer,
-                          pNeighborRoamInfo->cfgParams.neighborResultsRefreshPeriod);
-          if ( status != eHAL_STATUS_SUCCESS )
+          status = palTimerStart(pMac->hHdd, pNeighborRoamInfo->neighborResultsRefreshTimer,
+                          pNeighborRoamInfo->cfgParams.neighborResultsRefreshPeriod * PAL_TIMER_TO_MS_UNIT,
+                          eANI_BOOLEAN_FALSE);
+          if (eHAL_STATUS_SUCCESS != status)
           {
              smsLog(pMac, LOGE, FL("Neighbor results refresh timer start failed with status %d"), status);
           }
@@ -1399,11 +1397,8 @@ static tANI_BOOLEAN csrNeighborRoamProcessScanResults(tpAniSirGlobal pMac,
             abs(pScanResult->BssDescriptor.rssi),
             pScanResult->BssDescriptor.channelId);
 
-       if ((VOS_TRUE == vos_mem_compare(pScanResult->BssDescriptor.bssId,
-           pNeighborRoamInfo->currAPbssid, sizeof(tSirMacAddr))) ||
-           ((eSME_ROAM_TRIGGER_SCAN == pNeighborRoamInfo->cfgRoamEn) &&
-           (VOS_TRUE != vos_mem_compare(pScanResult->BssDescriptor.bssId,
-                        pNeighborRoamInfo->cfgRoambssId, sizeof(tSirMacAddr)))))
+       if (VOS_TRUE == vos_mem_compare(pScanResult->BssDescriptor.bssId, 
+                       pNeighborRoamInfo->currAPbssid, sizeof(tSirMacAddr)))
         {
             /* currently associated AP. Do not have this in the roamable AP list */
             VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
@@ -1435,8 +1430,7 @@ static tANI_BOOLEAN csrNeighborRoamProcessScanResults(tpAniSirGlobal pMac,
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
        && !csrRoamIsRoamOffloadScanEnabled(pMac)
 #endif
-       && ((eSME_ROAM_TRIGGER_SCAN != pNeighborRoamInfo->cfgRoamEn) ||
-           (eSME_ROAM_TRIGGER_FAST_ROAM != pNeighborRoamInfo->cfgRoamEn)))
+       )
        {
                /*
                * If RSSI is lower than the lookup threshold, then continue.
@@ -1597,12 +1591,7 @@ static tANI_BOOLEAN csrNeighborRoamProcessScanResults(tpAniSirGlobal pMac,
         csrLLInsertTail(&pNeighborRoamInfo->roamableAPList, &pBssInfo->List, LL_ACCESS_LOCK);
 
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
-        if ((eSME_ROAM_TRIGGER_SCAN == pNeighborRoamInfo->cfgRoamEn) ||
-            (eSME_ROAM_TRIGGER_FAST_ROAM == pNeighborRoamInfo->cfgRoamEn))
-        {
-           roamNow = eANI_BOOLEAN_FALSE;
-        }
-        else if ((abs(abs(CurrAPRssi) - abs(pScanResult->BssDescriptor.rssi)) >= immediateRoamRssiDiff)
+        if ((abs(abs(CurrAPRssi) - abs(pScanResult->BssDescriptor.rssi)) >= immediateRoamRssiDiff)
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
             && !csrRoamIsRoamOffloadScanEnabled(pMac)
 #endif
@@ -1696,7 +1685,11 @@ static VOS_STATUS csrNeighborRoamHandleEmptyScanResult(tpAniSirGlobal pMac)
 #endif
 
     /* Stop neighbor scan timer */
-    vos_timer_stop(&pNeighborRoamInfo->neighborScanTimer);
+    status = palTimerStop(pMac->hHdd, pNeighborRoamInfo->neighborScanTimer);
+    if (eHAL_STATUS_SUCCESS != status) 
+    {
+        smsLog(pMac, LOGW, FL("stopping neighborScanTimer failed with status %d"), status);
+    }
 
     /*
      * Increase the neighbor lookup threshold by 3 dB
@@ -1804,9 +1797,10 @@ static VOS_STATUS csrNeighborRoamHandleEmptyScanResult(tpAniSirGlobal pMac)
             pNeighborRoamInfo->uScanMode = SPLIT_SCAN_OCCUPIED_LIST;
 
             /* Start empty scan refresh timer */
-            if (VOS_STATUS_SUCCESS !=
-                vos_timer_start(&pNeighborRoamInfo->emptyScanRefreshTimer,
-                    pNeighborRoamInfo->cfgParams.emptyScanRefreshPeriod))
+            if (eHAL_STATUS_SUCCESS !=
+                palTimerStart(pMac->hHdd, pNeighborRoamInfo->emptyScanRefreshTimer,
+                    pNeighborRoamInfo->cfgParams.emptyScanRefreshPeriod * PAL_TIMER_TO_MS_UNIT,
+                    eANI_BOOLEAN_FALSE))
             {
                 smsLog(pMac, LOGE, FL("Empty scan refresh timer failed to start (%d)"),
                         status);
@@ -1824,9 +1818,10 @@ static VOS_STATUS csrNeighborRoamHandleEmptyScanResult(tpAniSirGlobal pMac)
         else if (eThirdEmptyScan == pNeighborRoamInfo->uEmptyScanCount)
         {
             /* Start neighbor scan results refresh timer */
-            if (VOS_STATUS_SUCCESS !=
-                    vos_timer_start(&pNeighborRoamInfo->neighborResultsRefreshTimer,
-                        pNeighborRoamInfo->cfgParams.neighborResultsRefreshPeriod))
+            if (eHAL_STATUS_SUCCESS !=
+                    palTimerStart(pMac->hHdd, pNeighborRoamInfo->neighborResultsRefreshTimer,
+                        pNeighborRoamInfo->cfgParams.neighborResultsRefreshPeriod * PAL_TIMER_TO_MS_UNIT,
+                        eANI_BOOLEAN_FALSE))
             {
                 smsLog(pMac, LOGE, FL("Neighbor results refresh timer failed to start (%d)"),
                         status);
@@ -1951,7 +1946,7 @@ static eHalStatus csrNeighborRoamProcessScanComplete (tpAniSirGlobal pMac)
                            need to restart the CFG CHAN list scan procedure if reassoc callback is not invoked from TL 
                            within certain duration */
                         
-//                        vos_timer_stop(&pNeighborRoamInfo->neighborScanTimer);
+//                        palTimerStop(pMac->hHdd, pNeighborRoamInfo->neighborScanTimer);
                     }
                 }
                 else
@@ -2018,12 +2013,13 @@ static eHalStatus csrNeighborRoamProcessScanComplete (tpAniSirGlobal pMac)
                 return eHAL_STATUS_SUCCESS;
             }
 
-        hstatus = vos_timer_start(&pNeighborRoamInfo->neighborResultsRefreshTimer,
-                    pNeighborRoamInfo->cfgParams.neighborResultsRefreshPeriod);
+        hstatus = palTimerStart(pMac->hHdd, pNeighborRoamInfo->neighborResultsRefreshTimer, 
+                    pNeighborRoamInfo->cfgParams.neighborResultsRefreshPeriod * PAL_TIMER_TO_MS_UNIT,
+                    eANI_BOOLEAN_FALSE);
 
            /* This timer should be started before registering the Reassoc callback with TL. This is because, it is very likely 
             * that the callback getting called immediately and the timer would never be stopped when pre-auth is in progress */
-        if( hstatus != eHAL_STATUS_SUCCESS)
+        if (eHAL_STATUS_SUCCESS != hstatus)
             {
             smsLog(pMac, LOGE, FL("Neighbor results refresh timer failed to start, status = %d"), hstatus);
                 vos_mem_free(pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.ChannelList);
@@ -2171,8 +2167,10 @@ static eHalStatus csrNeighborRoamScanRequestCallback(tHalHandle halHandle, void 
     {
 
         /* Restart the timer for the next scan sequence as scanning is not over */
-        hstatus = vos_timer_start(&pNeighborRoamInfo->neighborScanTimer,
-                    pNeighborRoamInfo->cfgParams.neighborScanPeriod);
+        hstatus = palTimerStart(pMac->hHdd, pNeighborRoamInfo->neighborScanTimer,
+                    pNeighborRoamInfo->cfgParams.neighborScanPeriod * PAL_TIMER_TO_MS_UNIT,
+                    eANI_BOOLEAN_FALSE);
+
         if (eHAL_STATUS_SUCCESS != hstatus)
         {
             /* Timer start failed.. Should we ASSERT here??? */
@@ -2507,16 +2505,25 @@ eHalStatus csrNeighborRoamPerformContiguousBgScan(tpAniSirGlobal pMac, tANI_U32 
     /* Contiguously scan all channels from valid list */
     NEIGHBOR_ROAM_DEBUG(pMac, LOG2, "%s: get valid channel list", __func__);
 
-    numOfChannels = sizeof(pMac->roam.validChannelList);
-
-    if(!HAL_STATUS_SUCCESS(csrGetCfgValidChannels(pMac,
-                          (tANI_U8 *)pMac->roam.validChannelList,
-                          (tANI_U32 *) &numOfChannels)))
+    if (NULL != pMac->roam.neighborRoamInfo.cfgParams.countryChannelInfo.countryValidChannelList.ChannelList)
     {
-        smsLog(pMac, LOGE, FL("Could not get valid channel list"));
-        return eHAL_STATUS_FAILURE;
+        /* this list is filled only if the country code is set to KR */
+        numOfChannels = pMac->roam.neighborRoamInfo.cfgParams.countryChannelInfo.countryValidChannelList.numOfChannels;
+        pInChannelList = pMac->roam.neighborRoamInfo.cfgParams.countryChannelInfo.countryValidChannelList.ChannelList;
     }
-    pInChannelList = pMac->roam.validChannelList;
+    else
+    {
+        numOfChannels = sizeof(pMac->roam.validChannelList);
+
+        if(!HAL_STATUS_SUCCESS(csrGetCfgValidChannels(pMac,
+                              (tANI_U8 *)pMac->roam.validChannelList,
+                              (tANI_U32 *) &numOfChannels)))
+        {
+            smsLog(pMac, LOGE, FL("Could not get valid channel list"));
+            return eHAL_STATUS_FAILURE;
+        }
+        pInChannelList = pMac->roam.validChannelList;
+    }
 
     if (CSR_IS_ROAM_INTRA_BAND_ENABLED(pMac))
     {
@@ -2902,7 +2909,6 @@ VOS_STATUS csrNeighborRoamCreateChanListFromNeighborReport(tpAniSirGlobal pMac)
     tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
     tANI_U8         numChannels = 0, i = 0;
     tANI_U8         channelList[MAX_BSS_IN_NEIGHBOR_RPT];
-    int             mergedOutputNumOfChannels = 0;
 #if 0
     eHalStatus  status = eHAL_STATUS_SUCCESS;
 #endif
@@ -2997,26 +3003,6 @@ VOS_STATUS csrNeighborRoamCreateChanListFromNeighborReport(tpAniSirGlobal pMac)
     vos_mem_copy(pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.ChannelList, 
                                             channelList, (numChannels) * sizeof(tANI_U8));
     pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.numOfChannels = numChannels;
-    /*
-     * Create a Union of occupied channel list learnt by the DUT along with the Neighbor
-     * report Channels. This increases the chances of the DUT to get a candidate AP while
-     * roaming even if the Neighbor Report is not able to provide sufficient information.
-     * */
-    if (pMac->scan.occupiedChannels.numChannels)
-    {
-       csrNeighborRoamMergeChannelLists(pMac,
-                  &pMac->scan.occupiedChannels.channelList[0],
-                  pMac->scan.occupiedChannels.numChannels,
-                  &pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.ChannelList[0],
-                  pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.numOfChannels,
-                  &mergedOutputNumOfChannels);
-       pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.numOfChannels =
-                  mergedOutputNumOfChannels;
-
-    }
-    /*Indicate the firmware about the update only if any new channels are added.
-     * Otherwise, the firmware would already be knowing the non-IAPPneighborlist
-     * channels. There is no need to update.*/
     if (numChannels)
     {
         smsLog(pMac, LOG1, FL("IAPP Neighbor list callback received as expected in state %d."),
@@ -3078,8 +3064,9 @@ void csrNeighborRoamRRMNeighborReportResult(void *context, VOS_STATUS vosStatus)
                 /* Now ready for neighbor scan based on the channel list created */
                 /* Start Neighbor scan timer now. Multiplication by PAL_TIMER_TO_MS_UNIT is to convert ms to us which is 
                    what palTimerStart expects */
-                status = vos_timer_start(&pNeighborRoamInfo->neighborScanTimer,
-                                pNeighborRoamInfo->cfgParams.neighborScanPeriod);
+                status = palTimerStart(pMac->hHdd, pNeighborRoamInfo->neighborScanTimer, 
+                                pNeighborRoamInfo->cfgParams.neighborScanPeriod * PAL_TIMER_TO_MS_UNIT, 
+                                eANI_BOOLEAN_FALSE);
                 if (eHAL_STATUS_SUCCESS != status)
                 {
                     /* Timer start failed.. Should we ASSERT here??? */
@@ -3419,7 +3406,7 @@ VOS_STATUS csrNeighborRoamTransitToCFGChanScan(tpAniSirGlobal pMac)
 
             pNeighborRoamInfo->scanRequestTimeStamp = (tANI_TIMESTAMP)palGetTickCount(pMac->hHdd);
 
-            vos_timer_stop(&pNeighborRoamInfo->neighborScanTimer);
+            palTimerStop(pMac->hHdd, pNeighborRoamInfo->neighborScanTimer);
 
             /* We are about to start a fresh scan cycle, 
              * purge non-P2P results from the past */
@@ -3578,11 +3565,12 @@ VOS_STATUS csrNeighborRoamTransitToCFGChanScan(tpAniSirGlobal pMac)
     /* We are gonna scan now. Remember the time stamp to filter out results only after this timestamp */
     pNeighborRoamInfo->scanRequestTimeStamp = (tANI_TIMESTAMP)palGetTickCount(pMac->hHdd);
     
-    vos_timer_stop(&pNeighborRoamInfo->neighborScanTimer);
+    palTimerStop(pMac->hHdd, pNeighborRoamInfo->neighborScanTimer);
     /* Start Neighbor scan timer now. Multiplication by PAL_TIMER_TO_MS_UNIT is to convert ms to us which is 
             what palTimerStart expects */
-    status = vos_timer_start(&pNeighborRoamInfo->neighborScanTimer,
-                    pNeighborRoamInfo->cfgParams.neighborScanPeriod);
+    status = palTimerStart(pMac->hHdd, pNeighborRoamInfo->neighborScanTimer, 
+                    pNeighborRoamInfo->cfgParams.neighborScanPeriod * PAL_TIMER_TO_MS_UNIT, 
+                    eANI_BOOLEAN_FALSE);
     
     if (eHAL_STATUS_SUCCESS != status)
     {
@@ -3907,9 +3895,9 @@ eHalStatus csrNeighborRoamIndicateDisconnect(tpAniSirGlobal pMac, tANI_U8 sessio
             // Stop scan and neighbor refresh timers.
             // These are indeed not required when we are in reassociating
             // state.
-            vos_timer_stop(&pNeighborRoamInfo->neighborScanTimer);
-            vos_timer_stop(&pNeighborRoamInfo->neighborResultsRefreshTimer);
-            vos_timer_stop(&pNeighborRoamInfo->emptyScanRefreshTimer);
+            palTimerStop(pMac->hHdd, pNeighborRoamInfo->neighborScanTimer);
+            palTimerStop(pMac->hHdd, pNeighborRoamInfo->neighborResultsRefreshTimer);
+            palTimerStop(pMac->hHdd, pNeighborRoamInfo->emptyScanRefreshTimer);
             if (!CSR_IS_ROAM_SUBSTATE_DISASSOC_HO( pMac, sessionId )) {
                 /*
                  * Disconnect indication during Disassoc Handoff sub-state
@@ -3921,7 +3909,6 @@ eHalStatus csrNeighborRoamIndicateDisconnect(tpAniSirGlobal pMac, tANI_U8 sessio
                  * in-turn block scans (see csrIsScanAllowed).
                  */
                 CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_INIT);
-                pNeighborRoamInfo->roamChannelInfo.IAPPNeighborListReceived = eANI_BOOLEAN_FALSE;
             }
             break;
 
@@ -3939,7 +3926,6 @@ eHalStatus csrNeighborRoamIndicateDisconnect(tpAniSirGlobal pMac, tANI_U8 sessio
 
         case eCSR_NEIGHBOR_ROAM_STATE_CONNECTED:
             CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_INIT)
-            pNeighborRoamInfo->roamChannelInfo.IAPPNeighborListReceived = eANI_BOOLEAN_FALSE;
             csrNeighborRoamResetConnectedStateControlInfo(pMac);
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
             if (!csrRoamIsRoamOffloadScanEnabled(pMac))
@@ -3953,7 +3939,6 @@ eHalStatus csrNeighborRoamIndicateDisconnect(tpAniSirGlobal pMac, tANI_U8 sessio
 
         case eCSR_NEIGHBOR_ROAM_STATE_CFG_CHAN_LIST_SCAN:
             CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_INIT);
-            pNeighborRoamInfo->roamChannelInfo.IAPPNeighborListReceived = eANI_BOOLEAN_FALSE;
             csrNeighborRoamResetCfgListChanScanControlInfo(pMac);
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
             if (!csrRoamIsRoamOffloadScanEnabled(pMac))
@@ -3967,11 +3952,10 @@ eHalStatus csrNeighborRoamIndicateDisconnect(tpAniSirGlobal pMac, tANI_U8 sessio
 
         case eCSR_NEIGHBOR_ROAM_STATE_PREAUTH_DONE:
             /* Stop pre-auth to reassoc interval timer */
-            vos_timer_stop(&pMac->ft.ftSmeContext.preAuthReassocIntvlTimer);
+            palTimerStop(pMac->hHdd, pMac->ft.ftSmeContext.preAuthReassocIntvlTimer);
         case eCSR_NEIGHBOR_ROAM_STATE_REPORT_SCAN:
         case eCSR_NEIGHBOR_ROAM_STATE_PREAUTHENTICATING:
             CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_INIT)
-            pNeighborRoamInfo->roamChannelInfo.IAPPNeighborListReceived = eANI_BOOLEAN_FALSE;
             csrNeighborRoamResetPreauthControlInfo(pMac);
             csrNeighborRoamResetReportScanStateControlInfo(pMac);
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
@@ -3988,7 +3972,6 @@ eHalStatus csrNeighborRoamIndicateDisconnect(tpAniSirGlobal pMac, tANI_U8 sessio
             NEIGHBOR_ROAM_DEBUG(pMac, LOGW, FL("Received disconnect event in state %d"), pNeighborRoamInfo->neighborRoamState);
             NEIGHBOR_ROAM_DEBUG(pMac, LOGW, FL("Transitioning to INIT state"));
             CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_INIT)
-            pNeighborRoamInfo->roamChannelInfo.IAPPNeighborListReceived = eANI_BOOLEAN_FALSE;
             break;
     }
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
@@ -4026,9 +4009,7 @@ eHalStatus csrNeighborRoamIndicateConnect(tpAniSirGlobal pMac, tANI_U8 sessionId
     int  init_ft_flag = FALSE;
 #endif
 
-    // if session id invalid then we need return failure
-    if (NULL == pNeighborRoamInfo || !CSR_IS_SESSION_VALID(pMac, sessionId) ||
-        (NULL == pMac->roam.roamSession[sessionId].pCurRoamProfile))
+    if (NULL == pNeighborRoamInfo)
     {
         return eHAL_STATUS_FAILURE;
     }
@@ -4066,7 +4047,6 @@ eHalStatus csrNeighborRoamIndicateConnect(tpAniSirGlobal pMac, tANI_U8 sessionId
             {
                 /* Just transition the state to INIT state. Rest of the clean up happens when we get next connect indication */
                 CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_INIT)
-                pNeighborRoamInfo->roamChannelInfo.IAPPNeighborListReceived = eANI_BOOLEAN_FALSE;
                 break;
             }
             /* Fall through if the status is SUCCESS */
@@ -4283,6 +4263,17 @@ eHalStatus csrNeighborRoamInit(tpAniSirGlobal pMac)
     pNeighborRoamInfo->cfgParams.neighborResultsRefreshPeriod = pMac->roam.configParam.neighborRoamConfig.nNeighborResultsRefreshPeriod;
     pNeighborRoamInfo->cfgParams.emptyScanRefreshPeriod = pMac->roam.configParam.neighborRoamConfig.nEmptyScanRefreshPeriod;
 
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+    pNeighborRoamInfo->cfgParams.countryChannelInfo.revision = SME_KR_25;
+    pNeighborRoamInfo->cfgParams.countryChannelInfo.countryValidChannelList.ChannelList = NULL;
+    pNeighborRoamInfo->cfgParams.countryChannelInfo.countryValidChannelList.numOfChannels = 0;
+
+    if (0 == strncmp(pMac->scan.countryCodeCurrent, "KR", 2))
+    {
+       csrInitCountryValidChannelList(pMac, SME_KR_25);
+    }
+#endif
+
     pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels   =
                         pMac->roam.configParam.neighborRoamConfig.neighborScanChanList.numChannels;
 
@@ -4313,7 +4304,7 @@ eHalStatus csrNeighborRoamInit(tpAniSirGlobal pMac)
 
     pNeighborRoamInfo->neighborScanTimerInfo.pMac = pMac;
     pNeighborRoamInfo->neighborScanTimerInfo.sessionId = CSR_SESSION_ID_INVALID;
-    status = vos_timer_init(&pNeighborRoamInfo->neighborScanTimer, VOS_TIMER_TYPE_SW,
+    status = palTimerAlloc(pMac->hHdd, &pNeighborRoamInfo->neighborScanTimer, 
                     csrNeighborRoamNeighborScanTimerCallback, (void *)&pNeighborRoamInfo->neighborScanTimerInfo);
 
     if (eHAL_STATUS_SUCCESS != status)
@@ -4324,7 +4315,7 @@ eHalStatus csrNeighborRoamInit(tpAniSirGlobal pMac)
         return eHAL_STATUS_RESOURCES;
     }
 
-    status = vos_timer_init(&pNeighborRoamInfo->neighborResultsRefreshTimer, VOS_TIMER_TYPE_SW,
+    status = palTimerAlloc(pMac->hHdd, &pNeighborRoamInfo->neighborResultsRefreshTimer, 
                     csrNeighborRoamResultsRefreshTimerCallback, (void *)&pNeighborRoamInfo->neighborScanTimerInfo);
 
     if (eHAL_STATUS_SUCCESS != status)
@@ -4332,11 +4323,11 @@ eHalStatus csrNeighborRoamInit(tpAniSirGlobal pMac)
         smsLog(pMac, LOGE, FL("Neighbor results refresh timer allocation failed"));
         vos_mem_free(pNeighborRoamInfo->cfgParams.channelInfo.ChannelList);
         pNeighborRoamInfo->cfgParams.channelInfo.ChannelList = NULL;
-        vos_timer_destroy(&pNeighborRoamInfo->neighborScanTimer);
+        palTimerFree(pMac->hHdd, pNeighborRoamInfo->neighborScanTimer);
         return eHAL_STATUS_RESOURCES;
     }
 
-    status = vos_timer_init(&pNeighborRoamInfo->emptyScanRefreshTimer, VOS_TIMER_TYPE_SW,
+    status = palTimerAlloc(pMac->hHdd, &pNeighborRoamInfo->emptyScanRefreshTimer,
                 csrNeighborRoamEmptyScanRefreshTimerCallback,
                 (void *)&pNeighborRoamInfo->neighborScanTimerInfo);
 
@@ -4345,8 +4336,8 @@ eHalStatus csrNeighborRoamInit(tpAniSirGlobal pMac)
         smsLog(pMac, LOGE, FL("Empty scan refresh timer allocation failed"));
         vos_mem_free(pNeighborRoamInfo->cfgParams.channelInfo.ChannelList);
         pNeighborRoamInfo->cfgParams.channelInfo.ChannelList = NULL;
-        vos_timer_destroy(&pNeighborRoamInfo->neighborScanTimer);
-        vos_timer_destroy(&pNeighborRoamInfo->neighborResultsRefreshTimer);
+        palTimerFree(pMac->hHdd, pNeighborRoamInfo->neighborScanTimer);
+        palTimerFree(pMac->hHdd, pNeighborRoamInfo->neighborResultsRefreshTimer);
         return eHAL_STATUS_RESOURCES;
     }
 
@@ -4356,9 +4347,9 @@ eHalStatus csrNeighborRoamInit(tpAniSirGlobal pMac)
         smsLog(pMac, LOGE, FL("LL Open of roamable AP List failed"));
         vos_mem_free(pNeighborRoamInfo->cfgParams.channelInfo.ChannelList);
         pNeighborRoamInfo->cfgParams.channelInfo.ChannelList = NULL;
-        vos_timer_destroy(&pNeighborRoamInfo->neighborScanTimer);
-        vos_timer_destroy(&pNeighborRoamInfo->neighborResultsRefreshTimer);
-        vos_timer_destroy(&pNeighborRoamInfo->emptyScanRefreshTimer);
+        palTimerFree(pMac->hHdd, pNeighborRoamInfo->neighborScanTimer);
+        palTimerFree(pMac->hHdd, pNeighborRoamInfo->neighborResultsRefreshTimer);
+        palTimerFree(pMac->hHdd, pNeighborRoamInfo->emptyScanRefreshTimer);
         return eHAL_STATUS_RESOURCES;
     }
 
@@ -4375,9 +4366,9 @@ eHalStatus csrNeighborRoamInit(tpAniSirGlobal pMac)
         smsLog(pMac, LOGE, FL("LL Open of roamable AP List failed"));
         vos_mem_free(pNeighborRoamInfo->cfgParams.channelInfo.ChannelList);
         pNeighborRoamInfo->cfgParams.channelInfo.ChannelList = NULL;
-        vos_timer_destroy(&pNeighborRoamInfo->neighborScanTimer);
-        vos_timer_destroy(&pNeighborRoamInfo->neighborResultsRefreshTimer);
-        vos_timer_destroy(&pNeighborRoamInfo->emptyScanRefreshTimer);
+        palTimerFree(pMac->hHdd, pNeighborRoamInfo->neighborScanTimer);
+        palTimerFree(pMac->hHdd, pNeighborRoamInfo->neighborResultsRefreshTimer);        
+        palTimerFree(pMac->hHdd, pNeighborRoamInfo->emptyScanRefreshTimer);
         csrLLClose(&pNeighborRoamInfo->roamableAPList);
         return eHAL_STATUS_RESOURCES;
     }
@@ -4386,7 +4377,7 @@ eHalStatus csrNeighborRoamInit(tpAniSirGlobal pMac)
     pNeighborRoamInfo->scanRequestTimeStamp = (tANI_TIMESTAMP)palGetTickCount(pMac->hHdd);
 
     CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_INIT)
-    pNeighborRoamInfo->roamChannelInfo.IAPPNeighborListReceived = eANI_BOOLEAN_FALSE;
+    
     return eHAL_STATUS_SUCCESS;
 }
 
@@ -4418,9 +4409,9 @@ void csrNeighborRoamClose(tpAniSirGlobal pMac)
     
     pNeighborRoamInfo->neighborScanTimerInfo.pMac = NULL;
     pNeighborRoamInfo->neighborScanTimerInfo.sessionId = CSR_SESSION_ID_INVALID;
-    vos_timer_destroy(&pNeighborRoamInfo->neighborScanTimer);
-    vos_timer_destroy(&pNeighborRoamInfo->neighborResultsRefreshTimer);
-    vos_timer_destroy(&pNeighborRoamInfo->emptyScanRefreshTimer);
+    palTimerFree(pMac->hHdd, pNeighborRoamInfo->neighborScanTimer);
+    palTimerFree(pMac->hHdd, pNeighborRoamInfo->neighborResultsRefreshTimer);
+    palTimerFree(pMac->hHdd, pNeighborRoamInfo->emptyScanRefreshTimer);
 
     /* Should free up the nodes in the list before closing the double Linked list */
     csrNeighborRoamFreeRoamableBSSList(pMac, &pNeighborRoamInfo->roamableAPList);
@@ -4659,16 +4650,14 @@ tANI_BOOLEAN csrNeighborRoamStatePreauthDone(tpAniSirGlobal pMac)
 ---------------------------------------------------------------------------*/
 void csrNeighborRoamTranistionPreauthDoneToDisconnected(tpAniSirGlobal pMac)
 {
-    tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
     if (pMac->roam.neighborRoamInfo.neighborRoamState != 
                eCSR_NEIGHBOR_ROAM_STATE_PREAUTH_DONE) return;
 
     // Stop timer
-    vos_timer_stop(&pMac->ft.ftSmeContext.preAuthReassocIntvlTimer);
+    palTimerStop(pMac->hHdd, pMac->ft.ftSmeContext.preAuthReassocIntvlTimer);
 
     // Transition to init state
     CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_INIT)
-    pNeighborRoamInfo->roamChannelInfo.IAPPNeighborListReceived = eANI_BOOLEAN_FALSE;
 }
 
 /* ---------------------------------------------------------------------------

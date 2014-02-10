@@ -233,14 +233,14 @@ wpt_status wpalSleep(wpt_uint32 timeout)
 }
 
 /*---------------------------------------------------------------------------
-    wpalBusyWait - Thread busy wait with specified usec
+    wpalUsecSleep - sleep for a specified Micro Sec interval
     Param:
-        usecDelay - amount of time to wait. In unit of micro-seconds.
+        timeout - amount of time to sleep. In unit of micro-seconds.
     Return:
-        NONE
+        eWLAN_PAL_STATUS_SUCCESS - success. Fail otherwise.
 ---------------------------------------------------------------------------*/
-void wpalBusyWait(wpt_uint32 usecDelay)
+wpt_status wpalUsecSleep(wpt_uint32 timeout)
 {
-   vos_busy_wait(usecDelay);
-   return;
+   usleep( timeout );
+   return eWLAN_PAL_STATUS_SUCCESS;
 }

@@ -654,11 +654,6 @@ typedef struct tagCsrConfig
 #endif
     tANI_U8   txLdpcEnable;
 
-    /*
-     * Enable/Disable heartbeat offload
-     */
-    tANI_BOOLEAN enableHeartBeatOffload;
-    tANI_U8 isAmsduSupportInAMPDU;
 }tCsrConfig;
 
 typedef struct tagCsrChannelPowerInfo
@@ -694,13 +689,13 @@ typedef struct tagCsrScanStruct
     tDblLinkList tempScanResults;
     tANI_BOOLEAN fScanEnable;
     tANI_BOOLEAN fFullScanIssued;
-    vos_timer_t hTimerGetResult;
+    tPalTimerHandle hTimerGetResult;
 #ifdef WLAN_AP_STA_CONCURRENCY
-    vos_timer_t hTimerStaApConcTimer;
+    tPalTimerHandle hTimerStaApConcTimer;
 #endif
-    vos_timer_t hTimerIdleScan;
-    vos_timer_t hTimerResultAging;
-    vos_timer_t hTimerResultCfgAging;
+    tPalTimerHandle hTimerIdleScan;
+    tPalTimerHandle hTimerResultAging;
+    tPalTimerHandle hTimerResultCfgAging;
     tPalTimerHandle hTimerBgScan;
     //changes on every scan, it is used as a flag for whether 11d info is found on every scan
     tANI_U8 channelOf11dInfo;
@@ -727,7 +722,6 @@ typedef struct tagCsrScanStruct
     tANI_U8 countryCode11d[WNI_CFG_COUNTRY_CODE_LEN];
     v_REGDOMAIN_t domainIdDefault;  //default regulatory domain
     v_REGDOMAIN_t domainIdCurrent;  //current regulatory domain
-    tCsrBssid currentCountryBssid;  // Bssid for current country code
     tANI_BOOLEAN f11dInfoApplied;
     tANI_BOOLEAN fCancelIdleScan;
 #ifdef FEATURE_WLAN_WAPI
@@ -854,7 +848,7 @@ typedef struct tagCsrTlStatsReqInfo
 {
    tANI_U32               periodicity;
    tANI_BOOLEAN           timerRunning;
-   vos_timer_t            hTlStatsTimer;
+   tPalTimerHandle        hTlStatsTimer;
    tANI_U8                numClient;
 }tCsrTlStatsReqInfo;
 
@@ -904,8 +898,8 @@ typedef struct tagCsrRoamSession
     tCsrTimerInfo roamingTimerInfo;
     eCsrRoamingReason roamingReason;
     tANI_BOOLEAN fCancelRoaming;
-    vos_timer_t hTimerRoaming;
-    vos_timer_t hTimerIbssJoining;
+    tPalTimerHandle hTimerRoaming;
+    tPalTimerHandle hTimerIbssJoining;
     tCsrTimerInfo ibssJoinTimerInfo;
     tANI_BOOLEAN ibss_join_pending;
     eCsrRoamResult roamResult;  //the roamResult that is used when the roaming timer fires
@@ -921,7 +915,7 @@ typedef struct tagCsrRoamSession
     tANI_BOOLEAN fWMMConnection;
 #ifdef FEATURE_WLAN_BTAMP_UT_RF
     //To retry a join later when it fails if so desired
-    vos_timer_t hTimerJoinRetry;
+    tPalTimerHandle hTimerJoinRetry;
     tCsrTimerInfo joinRetryTimerInfo;
     tANI_U32 maxRetryCount;
 #endif
@@ -959,7 +953,7 @@ typedef struct tagCsrRoamStruct
     tANI_U32 numValidChannels; //total number of channels in CFG
 
     tANI_S32 sPendingCommands;
-    vos_timer_t hTimerWaitForKey;  //To support timeout for WaitForKey state
+    tPalTimerHandle hTimerWaitForKey;  //To support timeout for WaitForKey state
     tCsrSummaryStatsInfo       summaryStatsInfo;
     tCsrGlobalClassAStatsInfo  classAStatsInfo;
     tCsrGlobalClassBStatsInfo  classBStatsInfo;
@@ -1213,33 +1207,8 @@ eHalStatus csrGetStatistics(tpAniSirGlobal pMac, eCsrStatsRequesterType requeste
                             tANI_U32 periodicity, tANI_BOOLEAN cache,
                             tANI_U8 staId, void *pContext);
 
-/* ---------------------------------------------------------------------------
-    \fn csrGetTLSTAState
-    \helper function to get the TL STA State whenever the function is called.
-
-    \param staId - The staID to be passed to the TL
-            to get the relevant TL STA State
-    \return the state as tANI_U16
-  ---------------------------------------------------------------------------*/
-tANI_U16 csrGetTLSTAState(tpAniSirGlobal pMac, tANI_U8 staId);
 
 eHalStatus csrGetRssi(tpAniSirGlobal pMac,tCsrRssiCallback callback,tANI_U8 staId,tCsrBssid bssId,void * pContext,void * pVosContext);
-
-/* ---------------------------------------------------------------------------
-    \fn csrGetSnr
-    \brief csr function that client calls to register a callback to get
-     SNR stored in TL
-
-    \param callback - SME sends back the requested stats using the callback
-    \param staId - The station ID for which the stats is requested for
-    \param bssid - The bssid for the connected session
-    \param pContext - user context to be passed back along with the callback
-
-    \return eHalStatus
-  ---------------------------------------------------------------------------*/
-eHalStatus csrGetSnr(tpAniSirGlobal pMac, tCsrSnrCallback callback,
-                     tANI_U8 staId, tCsrBssid bssId, void *pContext);
-
 #if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
 eHalStatus csrGetRoamRssi(tpAniSirGlobal pMac,
                           tCsrRssiCallback callback,

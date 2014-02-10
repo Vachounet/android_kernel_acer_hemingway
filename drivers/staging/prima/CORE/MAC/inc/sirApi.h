@@ -139,10 +139,6 @@ typedef tANI_U8 tSirIpv4Addr[SIR_IPV4_ADDR_LEN];
 #define SIR_VERSION_STRING_LEN 64
 typedef tANI_U8 tSirVersionString[SIR_VERSION_STRING_LEN];
 
-/* Periodic Tx pattern offload feature */
-#define PERIODIC_TX_PTRN_MAX_SIZE 1536
-#define MAXNUM_PERIODIC_TX_PTRNS 6
-
 enum eSirHostMsgTypes
 {
     SIR_HAL_APP_SETUP_NTF = SIR_HAL_HOST_MSG_START,
@@ -887,21 +883,6 @@ typedef struct sSirSmeScanReq
       -----------------------------*/
 } tSirSmeScanReq, *tpSirSmeScanReq;
 
-typedef struct sSirSmeScanAbortReq
-{
-    tANI_U16        type;
-    tANI_U16        msgLen;
-    tANI_U8         sessionId;
-} tSirSmeScanAbortReq, *tpSirSmeScanAbortReq;
-
-typedef struct sSirSmeScanChanReq
-{
-    tANI_U16        type;
-    tANI_U16        msgLen;
-    tANI_U8         sessionId;
-    tANI_U16        transcationId;
-} tSirSmeGetScanChanReq, *tpSirSmeGetScanChanReq;
-
 #ifdef FEATURE_OEM_DATA_SUPPORT
 
 #ifndef OEM_DATA_REQ_SIZE
@@ -1066,7 +1047,6 @@ typedef struct sSirSmeJoinReq
     tANI_U8             txBFIniFeatureEnabled;
     tANI_U8             txBFCsnValue;
 #endif
-    tANI_U8             isAmsduSupportInAMPDU;
 
     tAniTitanCBNeighborInfo cbNeighbors;
     tAniBool            spectrumMgtIndicator;
@@ -2118,17 +2098,6 @@ typedef struct sAniGetRssiReq
     
 } tAniGetRssiReq, *tpAniGetRssiReq;
 
-typedef struct sAniGetSnrReq
-{
-    // Common for all types are requests
-    tANI_U16                msgType;    // message type is same as the request type
-    tANI_U16                msgLen;  // length of the entire request
-    tANI_U8                 sessionId;
-    tANI_U8                 staId;
-    void                    *snrCallback;
-    void                    *pDevContext; //device context
-} tAniGetSnrReq, *tpAniGetSnrReq;
-
 #if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
 typedef struct sAniGetRoamRssiRsp
 {
@@ -2157,15 +2126,6 @@ typedef struct sAniChangeCountryCodeReq
     void                    *pVosContext; //voss context
     
 } tAniChangeCountryCodeReq, *tpAniChangeCountryCodeReq;
-
-typedef struct sAniDHCPStopInd
-{
-    tANI_U16                msgType;      // message type is same as the request type
-    tANI_U16                msgLen;       // length of the entire request
-    tANI_U8                 device_mode;  // Mode of the device(ex:STA, AP)
-    tSirMacAddr             macAddr;
-
-} tAniDHCPInd, *tpAniDHCPInd;
 
 typedef struct sAniSummaryStatsInfo
 {
@@ -2748,14 +2708,6 @@ typedef struct sSmeIbssPeerInd
     //Beacon will be appended for new Peer indication.
 }tSmeIbssPeerInd, *tpSmeIbssPeerInd;
 
-typedef struct sSirIbssPeerInactivityInd
-{
-   tANI_U8       bssIdx;
-   tANI_U8       staIdx;
-   tSirMacAddr   peerAddr;
-}tSirIbssPeerInactivityInd, *tpSirIbssPeerInactivityInd;
-
-
 typedef struct sLimScanChn
 {
     tANI_U16 numTimeScan;   //how many time this channel is scan
@@ -3312,9 +3264,7 @@ typedef struct sSirUpdateAPWPARSNIEsReq
 #define SIR_OFFLOAD_DISABLE                         0
 #define SIR_OFFLOAD_ENABLE                          1
 #define SIR_OFFLOAD_BCAST_FILTER_ENABLE             0x2
-#define SIR_OFFLOAD_MCAST_FILTER_ENABLE             0x4
 #define SIR_OFFLOAD_ARP_AND_BCAST_FILTER_ENABLE     (SIR_OFFLOAD_ENABLE|SIR_OFFLOAD_BCAST_FILTER_ENABLE)
-#define SIR_OFFLOAD_NS_AND_MCAST_FILTER_ENABLE      (SIR_OFFLOAD_ENABLE|SIR_OFFLOAD_MCAST_FILTER_ENABLE)
 
 #ifdef WLAN_NS_OFFLOAD
 typedef struct sSirNsOffloadReq
@@ -4001,6 +3951,16 @@ typedef struct sSirTdlsDelAllPeerInd
    tANI_U16               length;
    tANI_U8                sessionId;     // Session ID
 } tSirTdlsDelAllPeerInd, *tpSirTdlsDelAllPeerInd;
+#ifdef FEATURE_WLAN_TDLS_OXYGEN_DISAPPEAR_AP
+typedef struct sSirTdlsDisappearAPInd
+{
+   tANI_U16               messageType;
+   tANI_U16               length;
+   tANI_U8                sessionId;     // Session ID
+   tANI_U16               staId;
+   tSirMacAddr            staAddr;
+} tSirTdlsDisappearAPInd, *tpSirTdlsDisappearAPInd;
+#endif
 typedef struct sSirMgmtTxCompletionInd
 {
    tANI_U16               messageType;
@@ -4277,108 +4237,5 @@ typedef struct sSirUpdateChan
     tANI_U8 numChan;
     tSirUpdateChanParam chanParam[1];
 } tSirUpdateChanList, *tpSirUpdateChanList;
-
-#ifdef FEATURE_WLAN_LPHB
-#define SIR_LPHB_FILTER_LEN   64
-
-typedef enum
-{
-   LPHB_SET_EN_PARAMS_INDID,
-   LPHB_SET_TCP_PARAMS_INDID,
-   LPHB_SET_TCP_PKT_FILTER_INDID,
-   LPHB_SET_UDP_PARAMS_INDID,
-   LPHB_SET_UDP_PKT_FILTER_INDID,
-   LPHB_SET_NETWORK_INFO_INDID,
-} LPHBIndType;
-
-typedef struct sSirLPHBEnableStruct
-{
-   v_U8_t enable;
-   v_U8_t item;
-   v_U8_t session;
-} tSirLPHBEnableStruct;
-
-typedef struct sSirLPHBTcpParamStruct
-{
-   v_U32_t      srv_ip;
-   v_U32_t      dev_ip;
-   v_U16_t      src_port;
-   v_U16_t      dst_port;
-   v_U16_t      timeout;
-   v_U8_t       session;
-   tSirMacAddr  gateway_mac;
-   uint16       timePeriodSec; // in seconds
-   uint32       tcpSn;
-} tSirLPHBTcpParamStruct;
-
-typedef struct sSirLPHBTcpFilterStruct
-{
-   v_U16_t length;
-   v_U8_t  offset;
-   v_U8_t  session;
-   v_U8_t  filter[SIR_LPHB_FILTER_LEN];
-} tSirLPHBTcpFilterStruct;
-
-typedef struct sSirLPHBUdpParamStruct
-{
-   v_U32_t      srv_ip;
-   v_U32_t      dev_ip;
-   v_U16_t      src_port;
-   v_U16_t      dst_port;
-   v_U16_t      interval;
-   v_U16_t      timeout;
-   v_U8_t       session;
-   tSirMacAddr  gateway_mac;
-} tSirLPHBUdpParamStruct;
-
-typedef struct sSirLPHBUdpFilterStruct
-{
-   v_U16_t length;
-   v_U8_t  offset;
-   v_U8_t  session;
-   v_U8_t  filter[SIR_LPHB_FILTER_LEN];
-} tSirLPHBUdpFilterStruct;
-
-typedef struct sSirLPHBReq
-{
-   v_U16_t cmd;
-   v_U16_t dummy;
-   union
-   {
-      tSirLPHBEnableStruct     lphbEnableReq;
-      tSirLPHBTcpParamStruct   lphbTcpParamReq;
-      tSirLPHBTcpFilterStruct  lphbTcpFilterReq;
-      tSirLPHBUdpParamStruct   lphbUdpParamReq;
-      tSirLPHBUdpFilterStruct  lphbUdpFilterReq;
-   } params;
-} tSirLPHBReq;
-
-typedef struct sSirLPHBInd
-{
-   v_U8_t sessionIdx;
-   v_U8_t protocolType; /*TCP or UDP*/
-   v_U8_t eventReason;
-} tSirLPHBInd;
-#endif /* FEATURE_WLAN_LPHB */
-
-typedef struct sSirAddPeriodicTxPtrn
-{
-    /* MAC Address for the adapter */
-    tSirMacAddr macAddress;
-
-    tANI_U8  ucPtrnId;           // Pattern ID
-    tANI_U16 ucPtrnSize;         // Pattern size
-    tANI_U32 usPtrnIntervalMs;   // In msec
-    tANI_U8  ucPattern[PERIODIC_TX_PTRN_MAX_SIZE]; // Pattern buffer
-} tSirAddPeriodicTxPtrn, *tpSirAddPeriodicTxPtrn;
-
-typedef struct sSirDelPeriodicTxPtrn
-{
-    /* MAC Address for the adapter */
-    tSirMacAddr macAddress;
-
-    /* Bitmap of pattern IDs that need to be deleted */
-    tANI_U32 ucPatternIdBitmap;
-} tSirDelPeriodicTxPtrn, *tpSirDelPeriodicTxPtrn;
 
 #endif /* __SIR_API_H */

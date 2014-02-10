@@ -246,7 +246,6 @@ enum eWniMsgTypes
     eWNI_SME_UPDATE_NOA,
     eWNI_SME_CLEAR_DFS_CHANNEL_LIST,
     eWNI_SME_PRE_CHANNEL_SWITCH_FULL_POWER,
-    eWNI_SME_GET_SNR_REQ,
     //General Power Save Messages
     eWNI_PMC_MSG_TYPES_BEGIN,
     eWNI_PMC_PWR_SAVE_CFG,
@@ -345,6 +344,9 @@ enum eWniMsgTypes
     eWNI_SME_TDLS_DEL_STA_IND,
     eWNI_SME_TDLS_DEL_ALL_PEER_IND,
     eWNI_SME_MGMT_FRM_TX_COMPLETION_IND,
+#ifdef FEATURE_WLAN_TDLS_OXYGEN_DISAPPEAR_AP
+    eWNI_SME_TDLS_AP_DISAPPEAR_IND,
+#endif
     eWNI_SME_TDLS_LINK_ESTABLISH_REQ,
     eWNI_SME_TDLS_LINK_ESTABLISH_RSP,
 #endif
@@ -378,9 +380,6 @@ enum eWniMsgTypes
     eWNI_SME_CANDIDATE_FOUND_IND, /*ROAM candidate indication from FW*/
     eWNI_SME_HANDOFF_REQ,/*upper layer requested handoff to driver in STA mode*/
     eWNI_SME_ROAM_SCAN_OFFLOAD_RSP,/*Fwd the LFR scan offload rsp from FW to SME*/
-#ifdef FEATURE_WLAN_LPHB
-    eWNI_SME_LPHB_IND,
-#endif /* FEATURE_WLAN_LPHB */
     eWNI_SME_MSG_TYPES_END
 };
 

@@ -55,7 +55,6 @@
 #define CSR_NEIGHBOR_ROAM_H
 
 #ifdef WLAN_FEATURE_NEIGHBOR_ROAMING
-#include "sme_Api.h"
 
 /* Enumeration of various states in neighbor roam algorithm */
 typedef enum
@@ -85,6 +84,9 @@ typedef struct sCsrNeighborRoamCfgParams
     tANI_U32        minChannelScanTime;
     tANI_U32        maxChannelScanTime;
     tANI_U16        neighborResultsRefreshPeriod;
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+    tCsrCountryChannelInfo countryChannelInfo;
+#endif
     tANI_U16        emptyScanRefreshPeriod;
 } tCsrNeighborRoamCfgParams, *tpCsrNeighborRoamCfgParams;
 
@@ -180,9 +182,9 @@ typedef struct sCsrNeighborRoamControlInfo
     tCsrNeighborRoamCfgParams   cfgParams;
     tCsrBssid                   currAPbssid; // current assoc AP
     tANI_U8                     currAPoperationChannel; // current assoc AP
-    vos_timer_t                 neighborScanTimer;
-    vos_timer_t                 neighborResultsRefreshTimer;
-    vos_timer_t                 emptyScanRefreshTimer;
+    tPalTimerHandle             neighborScanTimer;
+    tPalTimerHandle             neighborResultsRefreshTimer;
+    tPalTimerHandle             emptyScanRefreshTimer;
     tCsrTimerInfo               neighborScanTimerInfo;
     tCsrNeighborRoamChannelInfo roamChannelInfo;
     tANI_U8                     currentNeighborLookupThreshold;
@@ -216,8 +218,6 @@ typedef struct sCsrNeighborRoamControlInfo
                                                    reassoc */
 #endif
 #endif
-    tSmeFastRoamTrigger         cfgRoamEn;
-    tSirMacAddr                 cfgRoambssId;
 } tCsrNeighborRoamControlInfo, *tpCsrNeighborRoamControlInfo;
 
 
@@ -252,10 +252,6 @@ VOS_STATUS csrNeighborRoamChannelsFilterByCurrentBand(
                       tANI_U8*  pOutputChannelList,
                       int*      pMergedOutputNumOfChannels
                       );
-VOS_STATUS csrNeighborRoamReassocIndCallback(v_PVOID_t pAdapter,
-                                             v_U8_t trafficStatus,
-                                             v_PVOID_t pUserCtxt,
-                                             v_S7_t   avgRssi);
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
 #define ROAM_SCAN_OFFLOAD_START                     1
 #define ROAM_SCAN_OFFLOAD_STOP                      2

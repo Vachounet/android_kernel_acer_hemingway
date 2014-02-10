@@ -115,10 +115,10 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
     tANI_U8 qosEnabled =    false;
     tANI_U8 wmeEnabled =    false;
 
-    pProbeRsp = vos_mem_malloc(sizeof(tSirProbeRespBeacon));
-    if ( NULL == pProbeRsp )
+    if(eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd, 
+                                                (void **)&pProbeRsp, sizeof(tSirProbeRespBeacon)))
     {
-        limLog(pMac, LOGE, FL("Unable to allocate memory in limProcessProbeRspFrame") );
+        limLog(pMac, LOGE, FL("Unable to PAL allocate memory in limProcessProbeRspFrame") );
         return;
     }
 
@@ -139,7 +139,7 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
    {
        if (limDeactivateMinChannelTimerDuringScan(pMac) != eSIR_SUCCESS)
        {
-           vos_mem_free(pProbeRsp);
+           palFreeMemory(pMac->hHdd, pProbeRsp);
            return;
        }
    }
@@ -149,7 +149,7 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
    {
        PELOG1(limLog(pMac, LOG1,
                  FL("Parse error ProbeResponse, length=%d"), frameLen);)
-       vos_mem_free(pProbeRsp);
+       palFreeMemory(pMac->hHdd, pProbeRsp);
        return;
    }
 
@@ -199,7 +199,7 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
             PELOG1(limLog(pMac, LOG1,
                FL("Parse error ProbeResponse, length=%d"),
                frameLen);)
-            vos_mem_free(pProbeRsp);
+            palFreeMemory(pMac->hHdd, pProbeRsp);
             return;
         }
 
@@ -222,13 +222,13 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
         {
             if( psessionEntry->beacon != NULL )//Either Beacon/probe response is required. Hence store it in same buffer.
             {
-                vos_mem_free(psessionEntry->beacon);
+                palFreeMemory(pMac->hHdd, psessionEntry->beacon);
                 psessionEntry->beacon = NULL;
             }
             psessionEntry->bcnLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
-
-            psessionEntry->beacon = vos_mem_malloc(psessionEntry->bcnLen);
-            if ( NULL == psessionEntry->beacon )
+            if ((palAllocateMemory(pMac->hHdd, (void**)&psessionEntry->beacon,
+                                   psessionEntry->bcnLen))
+                != eHAL_STATUS_SUCCESS)
             {
                 PELOGE(limLog(pMac, LOGE,
                               FL("Unable to allocate memory to store beacon"));)
@@ -236,9 +236,9 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
             else
             {
                 //Store the Beacon/ProbeRsp. This is sent to csr/hdd in join cnf response. 
-                vos_mem_copy(psessionEntry->beacon,
-                             WDA_GET_RX_MPDU_DATA(pRxPacketInfo),
-                             psessionEntry->bcnLen);
+                palCopyMemory(pMac->hHdd, psessionEntry->beacon,
+                              WDA_GET_RX_MPDU_DATA(pRxPacketInfo),
+                              psessionEntry->bcnLen);
             }
 
             // STA in WT_JOIN_BEACON_STATE
@@ -264,9 +264,9 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
             #endif //TO SUPPORT BT-AMP
             sirCopyMacAddr(currentBssId,psessionEntry->bssId);
 
-            if ( !vos_mem_compare(currentBssId, pHdr->bssId, sizeof(tSirMacAddr)) )
+            if ( !palEqualMemory( pMac->hHdd,currentBssId, pHdr->bssId, sizeof(tSirMacAddr)) )
             {
-                vos_mem_free(pProbeRsp);
+                palFreeMemory(pMac->hHdd, pProbeRsp);    
                 return;
             }
 
@@ -344,7 +344,7 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
                 limHandleIBSScoalescing(pMac, pProbeRsp, pRxPacketInfo,psessionEntry);
     } // if ((pMac->lim.gLimMlmState == eLIM_MLM_WT_PROBE_RESP_STATE) || ...
 
-    vos_mem_free(pProbeRsp);
+    palFreeMemory(pMac->hHdd, pProbeRsp);
     // Ignore Probe Response frame in all other states
     return;
 } /*** end limProcessProbeRspFrame() ***/
@@ -358,10 +358,10 @@ limProcessProbeRspFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
     tpSirMacMgmtHdr         pHdr;
     tSirProbeRespBeacon    *pProbeRsp;
 
-    pProbeRsp = vos_mem_malloc(sizeof(tSirProbeRespBeacon));
-    if ( NULL == pProbeRsp )
+    if(eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd, 
+                                                (void **)&pProbeRsp, sizeof(tSirProbeRespBeacon)))
     {
-        limLog(pMac, LOGE, FL("Unable to allocate memory in limProcessProbeRspFrameNoSession") );
+        limLog(pMac, LOGE, FL("Unable to PAL allocate memory in limProcessProbeRspFrameNoSession") );
         return;
     }
 
@@ -387,7 +387,7 @@ limProcessProbeRspFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
         {
             if (limDeactivateMinChannelTimerDuringScan(pMac) != eSIR_SUCCESS)
             {
-                vos_mem_free(pProbeRsp);
+                palFreeMemory(pMac->hHdd, pProbeRsp);
                 return;
             }
         }
@@ -399,7 +399,7 @@ limProcessProbeRspFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
     {
        PELOG1(limLog(pMac, LOG1,FL("Parse error ProbeResponse, length=%d"),
               frameLen);)
-       vos_mem_free(pProbeRsp);
+       palFreeMemory(pMac->hHdd, pProbeRsp);
        return;
     }
     /*  Since there is no psessionEntry, PE cannot be in the following states:
@@ -431,7 +431,7 @@ limProcessProbeRspFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
         if (sirConvertProbeFrame2Struct(pMac, pBody, frameLen, pProbeRsp) == eSIR_FAILURE)
         {
             limLog(pMac, LOG1, FL("Parse error ProbeResponse, length=%d\n"), frameLen);
-            vos_mem_free(pProbeRsp);
+            palFreeMemory(pMac->hHdd, pProbeRsp);
             return;
         }
         limLog( pMac, LOG2, FL("Save this probe rsp in LFR cache"));
@@ -452,7 +452,7 @@ limProcessProbeRspFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
         {
             limLog(pMac, LOG1,
                     FL("Parse error ProbeResponse, length=%d\n"), frameLen);
-            vos_mem_free(pProbeRsp);
+            palFreeMemory(pMac->hHdd, pProbeRsp);
             return;
         }
         limCheckAndAddBssDescription(pMac, pProbeRsp, pRxPacketInfo,
@@ -478,7 +478,7 @@ limProcessProbeRspFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
         if (sirConvertProbeFrame2Struct(pMac, pBody, frameLen, pProbeRsp) == eSIR_FAILURE)
         {
             limLog(pMac, LOG1, FL("Parse error ProbeResponse, length=%d"), frameLen);
-            vos_mem_free(pProbeRsp);
+            palFreeMemory(pMac->hHdd, pProbeRsp);
             return;
         }
 
@@ -489,6 +489,6 @@ limProcessProbeRspFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
         {
         }
     } 
-    vos_mem_free(pProbeRsp);
+    palFreeMemory(pMac->hHdd, pProbeRsp);
     return;
 } /*** end limProcessProbeRspFrameNew() ***/
