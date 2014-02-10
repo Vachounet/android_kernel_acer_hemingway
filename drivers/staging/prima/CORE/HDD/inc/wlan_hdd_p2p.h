@@ -55,9 +55,11 @@
 #define WAIT_CANCEL_REM_CHAN    1000
 #define WAIT_REM_CHAN_READY     1000
 #define WAIT_CHANGE_CHANNEL_FOR_OFFCHANNEL_TX 3000
-#define WAIT_TIME_FOR_P2PGO_CONNECTION 10000
+#define READY_EVENT_PROPOGATE_TIME 2
 
 #define ACTION_FRAME_DEFAULT_WAIT 200
+
+#define ESTIMATED_ROC_DUR_REQD_FOR_ACTION_TX 20
 
 #define WLAN_HDD_GET_TYPE_FRM_FC(__fc__)         (((__fc__) & 0x0F) >> 2)
 #define WLAN_HDD_GET_SUBTYPE_FRM_FC(__fc__)      (((__fc__) & 0xF0) >> 4)
@@ -112,7 +114,9 @@ int wlan_hdd_cfg80211_remain_on_channel( struct wiphy *wiphy,
                                 struct net_device *dev,
 #endif
                                 struct ieee80211_channel *chan,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0))
                                 enum nl80211_channel_type channel_type,
+#endif
                                 unsigned int duration, u64 *cookie );
 
 int wlan_hdd_cfg80211_cancel_remain_on_channel( struct wiphy *wiphy,
@@ -146,14 +150,15 @@ void hdd_remainChanReadyHandler( hdd_adapter_t *pAdapter );
 void hdd_sendActionCnf( hdd_adapter_t *pAdapter, tANI_BOOLEAN actionSendSuccess );
 int wlan_hdd_check_remain_on_channel(hdd_adapter_t *pAdapter);
 void wlan_hdd_cancel_existing_remain_on_channel(hdd_adapter_t *pAdapter);
-void hdd_start_p2p_go_connection_in_progress_timer( hdd_adapter_t *pAdapter );
-v_VOID_t wlan_hdd_p2p_go_connection_in_progresscb (v_PVOID_t userData );
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0))
 int wlan_hdd_action( struct wiphy *wiphy, struct wireless_dev *wdev,
                      struct ieee80211_channel *chan, bool offchan,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0))
                      enum nl80211_channel_type channel_type,
-                     bool channel_type_valid, unsigned int wait,
+                     bool channel_type_valid,
+#endif
+                     unsigned int wait,
                      const u8 *buf, size_t len,  bool no_cck,
                      bool dont_wait_for_ack, u64 *cookie );
 #elif (LINUX_VERSION_CODE >= KERNEL_VERSION(3,3,0))

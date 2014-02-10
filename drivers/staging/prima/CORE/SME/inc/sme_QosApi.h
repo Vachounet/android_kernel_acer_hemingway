@@ -68,6 +68,14 @@
 #include "aniGlobal.h"
 #include "sirApi.h"
 
+/*--------------------------------------------------------------------------
+  Pre-processor Definitions
+  ------------------------------------------------------------------------*/
+#define SME_QOS_UAPSD_VO      0x01
+#define SME_QOS_UAPSD_VI      0x02
+#define SME_QOS_UAPSD_BE      0x08
+#define SME_QOS_UAPSD_BK      0x04
+
 /*-------------------------------------------------------------------------- 
   Type declarations
   ------------------------------------------------------------------------*/
@@ -372,5 +380,18 @@ sme_QosStatusType sme_QosReleaseReq(tHalHandle hHal, v_U32_t QosFlowID);
 v_BOOL_t sme_QosIsTSInfoAckPolicyValid(tpAniSirGlobal pMac,
     sme_QosWmmTspecInfo * pQoSInfo,
     v_U8_t sessionId);
+
+
+/*--------------------------------------------------------------------------
+  \brief sme_QosUpdateHandOff() - Function which can be called to update
+   Hand-off state of SME QoS Session
+  \param sessionId - session id
+  \param updateHandOff - value True/False to update the handoff flag
+
+  \sa
+
+-------------------------------------------------------------------------*/
+void sme_QosUpdateHandOff(v_U8_t sessionId,
+     v_BOOL_t updateHandOff);
 
 #endif //#if !defined( __SME_QOSAPI_H )

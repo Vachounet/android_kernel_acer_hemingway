@@ -72,7 +72,7 @@ eHalStatus p2pProcessRemainOnChannelCmd(tpAniSirGlobal pMac, tSmeCmd *p2pRemaino
 {
     eHalStatus status = eHAL_STATUS_SUCCESS;
     tSirRemainOnChnReq* pMsg;
-    tANI_U16 len;
+    tANI_U32 len;
     tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, p2pRemainonChn->sessionId );
 
     if(!pSession)
@@ -111,15 +111,23 @@ eHalStatus p2pProcessRemainOnChannelCmd(tpAniSirGlobal pMac, tSmeCmd *p2pRemaino
 #else
     len = sizeof(tSirRemainOnChnReq) + pMac->p2pContext.probeRspIeLength;
 #endif
-
-    status = palAllocateMemory(pMac->hHdd, (void**)&pMsg, len );
-    if(HAL_STATUS_SUCCESS(status))
+    if( len > 0xFFFF )
+    {
+       /*In coming len for Msg is more then 16bit value*/
+       smsLog(pMac, LOGE, FL("  Message length is very large, %d"),
+            len);
+       return eHAL_STATUS_FAILURE;
+    }
+    pMsg = vos_mem_malloc(len);
+    if ( NULL == pMsg )
+        status = eHAL_STATUS_FAILURE;
+    else
     {
         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, "%s call", __func__);
-        palZeroMemory(pMac->hHdd, pMsg, sizeof(tSirRemainOnChnReq));
+        vos_mem_set(pMsg, sizeof(tSirRemainOnChnReq), 0);
         pMsg->messageType = eWNI_SME_REMAIN_ON_CHANNEL_REQ;
-        pMsg->length = len;
-        palCopyMemory( pMac, pMsg->selfMacAddr, pSession->selfMacAddr, sizeof(tSirMacAddr) ); 
+        pMsg->length = (tANI_U16)len;
+        vos_mem_copy(pMsg->selfMacAddr, pSession->selfMacAddr, sizeof(tSirMacAddr));
         pMsg->chnNum = p2pRemainonChn->u.remainChlCmd.chn;
         pMsg->phyMode = p2pRemainonChn->u.remainChlCmd.phyMode;
         pMsg->duration = p2pRemainonChn->u.remainChlCmd.duration;
@@ -129,13 +137,13 @@ eHalStatus p2pProcessRemainOnChannelCmd(tpAniSirGlobal pMac, tSmeCmd *p2pRemaino
         pMsg->sessionId = pSession->sessionId;
         if( p2pContext->probeRspIeLength )
         {
-            palCopyMemory(pMac->hHdd, (void *)pMsg->probeRspIe,
-                         (void *)p2pContext->probeRspIe, 
+            vos_mem_copy((void *)pMsg->probeRspIe, (void *)p2pContext->probeRspIe,
                          p2pContext->probeRspIeLength);
         }
 #else
         if( pMac->p2pContext.probeRspIeLength )
-           palCopyMemory(pMac->hHdd, (void *)pMsg->probeRspIe, (void *)pMac->p2pContext.probeRspIe, pMac->p2pContext.probeRspIeLength);
+           vos_mem_copy((void *)pMsg->probeRspIe, (void *)pMac->p2pContext.probeRspIe,
+                        pMac->p2pContext.probeRspIeLength);
 #endif
         status = palSendMBMessage(pMac->hHdd, pMsg);
     }
@@ -315,9 +323,8 @@ eHalStatus sme_sendActionCnf( tHalHandle hHal, tANI_U8* pMsg)
 
       if(NULL == pP2pContext->pNextActionFrm)
       {
-         status = palTimerStart(pMac->hHdd, pP2pContext->retryActionFrameTimer, 
-                        ACTION_FRAME_RETRY_TIMEOUT * PAL_TIMER_TO_MS_UNIT, eANI_BOOLEAN_FALSE);
-         if (!HAL_STATUS_SUCCESS(status))
+         status = vos_timer_start(&pP2pContext->retryActionFrameTimer, ACTION_FRAME_RETRY_TIMEOUT);
+         if (!VOS_IS_STATUS_SUCCESS(status))
          {
             smsLog(pMac, LOGE, " %s fail to start retryActionFrameTimerHandler",
                __func__, pP2pContext->NextActionFrameType);
@@ -336,12 +343,14 @@ eHalStatus sme_sendActionCnf( tHalHandle hHal, tANI_U8* pMsg)
 
    if (pP2pContext->actionFrameTimer)
    {
-      status = palTimerStop(pMac, pP2pContext->actionFrameTimer);
+      vos_timer_stop(&pP2pContext->actionFrameTimer);
+      status = eHAL_STATUS_SUCCESS;
    }
 
    if (pP2pContext->retryActionFrameTimer)
    {
-      status = palTimerStop(pMac, pP2pContext->retryActionFrameTimer);
+      vos_timer_stop(&pP2pContext->retryActionFrameTimer);
+      status = eHAL_STATUS_SUCCESS;
    }
 
    if(pP2pContext->pSentActionFrame)
@@ -390,9 +399,8 @@ eHalStatus sme_sendActionCnf( tHalHandle hHal, tANI_U8* pMsg)
    {
       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, " sending next frame %d type",
                   pP2pContext->NextActionFrameType);
-      status = palTimerStart(pMac->hHdd, pP2pContext->actionFrameTimer, 
-                        pP2pContext->ActionFrameSendTimeout * PAL_TIMER_TO_MS_UNIT, eANI_BOOLEAN_FALSE);
-      if (!HAL_STATUS_SUCCESS(status))
+      status = vos_timer_start(&pP2pContext->actionFrameTimer, pP2pContext->ActionFrameSendTimeout);
+      if (!VOS_IS_STATUS_SUCCESS(status))
       {
          smsLog(pMac, LOGE, FL(" %s fail to start timer status %d"), __func__, status);
          //Without the timer we cannot continue
@@ -414,9 +422,8 @@ eHalStatus sme_sendActionCnf( tHalHandle hHal, tANI_U8* pMsg)
       {
          VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, " sending next frame %d type",
                   pP2pContext->NextActionFrameType);
-         status = palTimerStart(pMac->hHdd, pP2pContext->retryActionFrameTimer, 
-                     ACTION_FRAME_RETRY_TIMEOUT * PAL_TIMER_TO_MS_UNIT, eANI_BOOLEAN_FALSE);
-         if (!HAL_STATUS_SUCCESS(status))
+         status = vos_timer_start(&pP2pContext->retryActionFrameTimer, ACTION_FRAME_RETRY_TIMEOUT);
+         if (!VOS_IS_STATUS_SUCCESS(status))
          {
             smsLog(pMac, LOGE, " %s fail to start retryActionFrameTimerHandler", __func__);
          }
@@ -486,71 +493,71 @@ void p2pResetContext(tp2pContext *pP2pContext)
       }      
       if( pP2pContext->probeRspIe )
       {
-         vos_mem_free( pP2pContext->probeRspIe );
+         vos_mem_free(pP2pContext->probeRspIe);
          pP2pContext->probeRspIe = NULL;
          pP2pContext->probeRspIeLength = 0;
       }
 
       if( pP2pContext->DiscoverReqIeField )
       {
-         vos_mem_free(pP2pContext->DiscoverReqIeField );
+         vos_mem_free(pP2pContext->DiscoverReqIeField);
          pP2pContext->DiscoverReqIeField = NULL;
          pP2pContext->DiscoverReqIeLength = 0;
       }
 
       if( pP2pContext->GoNegoCnfIeField )
       {
-         vos_mem_free( pP2pContext->GoNegoCnfIeField);
+         vos_mem_free(pP2pContext->GoNegoCnfIeField);
          pP2pContext->GoNegoCnfIeField = NULL;
          pP2pContext->GoNegoCnfIeLength = 0;
       }
 
       if( pP2pContext->GoNegoReqIeField )
       {
-         vos_mem_free( pP2pContext->GoNegoReqIeField );
+         vos_mem_free(pP2pContext->GoNegoReqIeField);
          pP2pContext->GoNegoReqIeField = NULL;
          pP2pContext->GoNegoReqIeLength = 0;
       }
 
       if( pP2pContext->GoNegoResIeField )
       {
-         vos_mem_free( pP2pContext->GoNegoResIeField );
+         vos_mem_free(pP2pContext->GoNegoResIeField);
          pP2pContext->GoNegoResIeField = NULL;
          pP2pContext->GoNegoResIeLength = 0;
       }
 
       if( pP2pContext->ProvDiscReqIeField )
       {
-         vos_mem_free( pP2pContext->ProvDiscReqIeField );
+         vos_mem_free(pP2pContext->ProvDiscReqIeField);
          pP2pContext->ProvDiscReqIeField = NULL;
          pP2pContext->ProvDiscReqIeLength = 0;
       }
 
       if( pP2pContext->ProvDiscResIeField )
       {
-         vos_mem_free( pP2pContext->ProvDiscResIeField );
+         vos_mem_free(pP2pContext->ProvDiscResIeField);
          pP2pContext->ProvDiscResIeLength = 0;
          pP2pContext->ProvDiscResIeField = NULL;
       }
 
       if (pP2pContext->actionFrameTimer)
       {
-         palTimerStop(pMac->hHdd, pP2pContext->actionFrameTimer);
+         vos_timer_stop(&pP2pContext->actionFrameTimer);
       }
 
       if (pP2pContext->discoverTimer)
       {
-         palTimerStop(pMac->hHdd, pP2pContext->discoverTimer);
+         vos_timer_stop(&pP2pContext->discoverTimer);
       }
 
       if (pP2pContext->listenTimerHandler)
       {
-         palTimerStop(pMac->hHdd, pP2pContext->listenTimerHandler);
+         vos_timer_stop(&pP2pContext->listenTimerHandler);
       }
 
       if (pP2pContext->WPSRegistrarCheckTimerHandler)
       {
-         palTimerStop(pMac->hHdd, pP2pContext->WPSRegistrarCheckTimerHandler);
+         vos_timer_stop(&pP2pContext->WPSRegistrarCheckTimerHandler);
       }
 
       if (pP2pContext->directedDiscoveryFilter)
@@ -588,30 +595,29 @@ eHalStatus sme_p2pOpen( tHalHandle hHal )
 
       p2pResetContext(pP2pContext);
 
-      status = palTimerAlloc(pMac->hHdd, &pP2pContext->actionFrameTimer, 
-                                    p2pActionFrameTimerHandler, pP2pContext);
-      if (!HAL_STATUS_SUCCESS(status))
+      status = vos_timer_init(&pP2pContext->actionFrameTimer, VOS_TIMER_TYPE_SW, p2pActionFrameTimerHandler, pP2pContext);
+      if (!VOS_IS_STATUS_SUCCESS(status))
       {
          smsLog(pMac, LOGE, " %s fail to alloc actionFrame timer for session %d", __func__, i);
          break;
       }
-      status = palTimerAlloc(pMac->hHdd, &pP2pContext->listenTimerHandler, 
-                              p2pListenDiscoverTimerHandler, pP2pContext);
-      if (!HAL_STATUS_SUCCESS(status))
+      status = vos_timer_init(&pP2pContext->listenTimerHandler, VOS_TIMER_TYPE_SW,
+                                        p2pListenDiscoverTimerHandler, pP2pContext);
+      if (!VOS_IS_STATUS_SUCCESS(status))
       {
          smsLog(pMac, LOGE, " %s fail to alloc listen timer for session %d", __func__, i);
          break;
       } 
-      status = palTimerAlloc(pMac->hHdd, &pP2pContext->discoverTimer, p2pDiscoverTimerHandler, pP2pContext);
-      if (!HAL_STATUS_SUCCESS(status))
+      status = vos_timer_init(&pP2pContext->discoverTimer, VOS_TIMER_TYPE_SW, p2pDiscoverTimerHandler, pP2pContext);
+      if (!VOS_IS_STATUS_SUCCESS(status))
       {
          smsLog(pMac, LOGE, " %s fail to alloc discover timer for session %d", __func__, i);
          break;
       }
 
-      status = palTimerAlloc(pMac->hHdd, &pP2pContext->retryActionFrameTimer, 
+      status = vos_timer_init(&pP2pContext->retryActionFrameTimer, VOS_TIMER_TYPE_SW,
                      p2pRetryActionFrameTimerHandler, pP2pContext);
-      if (!HAL_STATUS_SUCCESS(status))
+      if (!VOS_IS_STATUS_SUCCESS(status))
       {
          smsLog(pMac, LOGE, " %s fail to alloc retryActionFrameTimerHandler timer for session %d", __func__, i);
          break;
@@ -621,7 +627,7 @@ eHalStatus sme_p2pOpen( tHalHandle hHal )
    }
 #else
    //If static structure is too big, Need to change this function to allocate memory dynamically
-   vos_mem_zero( &pMac->p2pContext, sizeof( tp2pContext ) );
+   vos_mem_zero(&pMac->p2pContext, sizeof( tp2pContext ));
 #endif
 
    if(!HAL_STATUS_SUCCESS(status))
@@ -647,7 +653,7 @@ eHalStatus p2pStop( tHalHandle hHal )
 #else  
    if( pMac->p2pContext.probeRspIe )
    {
-      vos_mem_free( pMac->p2pContext.probeRspIe );
+      vos_mem_free(pMac->p2pContext.probeRspIe);
       pMac->p2pContext.probeRspIe = NULL;
    }
   
@@ -674,25 +680,25 @@ eHalStatus sme_p2pClose( tHalHandle hHal )
       pContext = &pMac->p2pContext[i];
       if (pContext->actionFrameTimer)
       {
-         palTimerFree(hHal, pContext->actionFrameTimer);
+         vos_timer_destroy(&pContext->actionFrameTimer);
          pContext->actionFrameTimer = NULL;
       }
 
       if (pContext->discoverTimer)
       {
-         palTimerFree(hHal, pContext->discoverTimer);
+         vos_timer_destroy(&pContext->discoverTimer);
          pContext->discoverTimer = NULL;
       }
 
       if (pContext->listenTimerHandler)
       {
-         palTimerFree(hHal, pContext->listenTimerHandler);
+         vos_timer_destroy(&pContext->listenTimerHandler);
          pContext->listenTimerHandler = NULL;
       }
 
       if (pContext->WPSRegistrarCheckTimerHandler)
       {
-         palTimerFree(hHal, pContext->WPSRegistrarCheckTimerHandler);
+         vos_timer_destroy(&pContext->WPSRegistrarCheckTimerHandler);
          pContext->WPSRegistrarCheckTimerHandler = NULL;
       }
 
@@ -701,7 +707,7 @@ eHalStatus sme_p2pClose( tHalHandle hHal )
 #else  
     if( pMac->p2pContext.probeRspIe )
     {
-        vos_mem_free( pMac->p2pContext.probeRspIe );
+        vos_mem_free(pMac->p2pContext.probeRspIe);
         pMac->p2pContext.probeRspIe = NULL;
     }
   
@@ -802,16 +808,18 @@ eHalStatus p2pSendAction(tHalHandle hHal, tANI_U8 sessionId,
     VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO_MED,
        " %s sends action frame", __func__);
     msgLen = (tANI_U16)((sizeof( tSirMbMsg )) + len);
-    status = palAllocateMemory(pMac->hHdd, (void **)&pMsg, msgLen);
-    if(HAL_STATUS_SUCCESS(status))
+    pMsg = vos_mem_malloc(msgLen);
+    if ( NULL == pMsg )
+        status = eHAL_STATUS_FAILURE;
+    else
     {
-        palZeroMemory(pMac->hHdd, (void *)pMsg, msgLen);
+        vos_mem_set((void *)pMsg, msgLen, 0);
         pMsg->type = pal_cpu_to_be16((tANI_U16)eWNI_SME_SEND_ACTION_FRAME_IND);
         pMsg->msgLen = pal_cpu_to_be16(msgLen);
         pMsg->sessionId = sessionId;
         pMsg->noack = noack;
         pMsg->wait = (tANI_U16)wait;
-        palCopyMemory( pMac->hHdd, pMsg->data, pBuf, len );
+        vos_mem_copy(pMsg->data, pBuf, len);
         status = palSendMBMessage(pMac->hHdd, pMsg);
     }
 
@@ -828,10 +836,12 @@ eHalStatus p2pCancelRemainOnChannel(tHalHandle hHal, tANI_U8 sessionId)
     //Need to check session ID to support concurrency
 
     msgLen = (tANI_U16)(sizeof( tSirMbMsg ));
-    status = palAllocateMemory(pMac->hHdd, (void **)&pMsg, msgLen);
-    if(HAL_STATUS_SUCCESS(status))
+    pMsg = vos_mem_malloc(msgLen);
+    if ( NULL == pMsg )
+       status = eHAL_STATUS_FAILURE;
+    else
     {
-        palZeroMemory(pMac->hHdd, (void *)pMsg, msgLen);
+        vos_mem_set((void *)pMsg, msgLen, 0);
         pMsg->type = pal_cpu_to_be16((tANI_U16)eWNI_SME_ABORT_REMAIN_ON_CHAN_IND);
         pMsg->msgLen = pal_cpu_to_be16(msgLen);
         status = palSendMBMessage(pMac->hHdd, pMsg);
@@ -847,11 +857,13 @@ eHalStatus p2pSetPs(tHalHandle hHal, tP2pPsConfig *pNoA)
     eHalStatus status = eHAL_STATUS_SUCCESS;
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
 
-    status = palAllocateMemory(pMac->hHdd, (void**)&pNoAParam, sizeof(tP2pPsConfig));
-    if(HAL_STATUS_SUCCESS(status))
+    pNoAParam = vos_mem_malloc(sizeof(tP2pPsConfig));
+    if ( NULL == pNoAParam )
+       status = eHAL_STATUS_FAILURE;
+    else
     {
-        palZeroMemory(pMac->hHdd, pNoAParam, sizeof(tP2pPsConfig));
-        palCopyMemory(pMac->hHdd, pNoAParam, pNoA, sizeof(tP2pPsConfig)); 
+        vos_mem_set(pNoAParam, sizeof(tP2pPsConfig), 0);
+        vos_mem_copy(pNoAParam, pNoA, sizeof(tP2pPsConfig));
         msg.type = eWNI_SME_UPDATE_NOA;
         msg.bodyval = 0;
         msg.bodyptr = pNoAParam;
@@ -1018,9 +1030,12 @@ void P2P_UpdateMacHdr(tHalHandle hHal, tANI_U8 SessionID, tANI_U8 *pBuf)
    macHdr->fc.subType = 13;
    macHdr->durationLo = 0;
    macHdr->durationHi = 0;
-   vos_mem_copy(macHdr->da, pMac->p2pContext[SessionID].peerMacAddress, P2P_MAC_ADDRESS_LEN);
-   vos_mem_copy(macHdr->sa, pMac->p2pContext[SessionID].selfMacAddress, P2P_MAC_ADDRESS_LEN);
-   vos_mem_copy(macHdr->bssId, pMac->p2pContext[SessionID].peerMacAddress, P2P_MAC_ADDRESS_LEN);
+   vos_mem_copy(macHdr->da, pMac->p2pContext[SessionID].peerMacAddress,
+                P2P_MAC_ADDRESS_LEN);
+   vos_mem_copy(macHdr->sa, pMac->p2pContext[SessionID].selfMacAddress,
+                P2P_MAC_ADDRESS_LEN);
+   vos_mem_copy(macHdr->bssId, pMac->p2pContext[SessionID].peerMacAddress,
+                P2P_MAC_ADDRESS_LEN);
 
    return;
 }
@@ -1204,7 +1219,7 @@ eHalStatus p2pCreateActionFrame(tpAniSirGlobal pMac, tANI_U8 SessionID, void *p2
    P2P_UpdateMacHdr(pMac, SessionID, pActionFrm);
 
    pBuf = (tANI_U8 *)vos_mem_malloc( nActionFrmlen);
-   if(NULL == pBuf)
+   if (NULL == pBuf)
    {
       smsLog(pMac, LOGE, FL("  fail to allocate memory"));
       if (pActionFrm) 
@@ -1293,7 +1308,9 @@ static eHalStatus p2pSendActionFrame(tpAniSirGlobal pMac, tANI_U8 HDDSessionID, 
                   __func__, pScanResult->BssDescriptor.channelId);
                p2pSetListenChannel(pMac, pP2pContext->sessionId, pScanResult->BssDescriptor.channelId);
             }
-            vos_mem_copy(pP2pContext->formationReq.deviceAddress, pScanResult->BssDescriptor.bssId, P2P_MAC_ADDRESS_LEN);
+            vos_mem_copy(pP2pContext->formationReq.deviceAddress,
+                         pScanResult->BssDescriptor.bssId,
+                         P2P_MAC_ADDRESS_LEN);
          }
          csrScanResultPurge(pMac, hScanResult);
       } 
@@ -1303,9 +1320,9 @@ static eHalStatus p2pSendActionFrame(tpAniSirGlobal pMac, tANI_U8 HDDSessionID, 
          filter.bWPSAssociation = TRUE;
          filter.BSSType = eCSR_BSS_TYPE_ANY;
          filter.SSIDs.SSIDList =( tCsrSSIDInfo *)vos_mem_malloc(sizeof(tCsrSSIDInfo));
-         if( filter.SSIDs.SSIDList == NULL )
+         if ( NULL == filter.SSIDs.SSIDList )
          {
-            smsLog( pMac, LOGP, FL("vos_mem_malloc failed:") );
+            smsLog( pMac, LOGP, FL("memory allocation failed for SSIDList") );
             pP2pContext->GroupFormationPending = FALSE;
             return eHAL_STATUS_FAILURE;
          }
@@ -1322,14 +1339,17 @@ static eHalStatus p2pSendActionFrame(tpAniSirGlobal pMac, tANI_U8 HDDSessionID, 
             {
                pScanResult = csrScanResultGetFirst(pMac, hScanResult );
                pP2pContext->formationReq.targetListenChannel = pScanResult->BssDescriptor.channelId;
-               vos_mem_copy(pP2pContext->formationReq.deviceAddress, pScanResult->BssDescriptor.bssId, P2P_MAC_ADDRESS_LEN);
+               vos_mem_copy(pP2pContext->formationReq.deviceAddress,
+                            pScanResult->BssDescriptor.bssId,
+                            P2P_MAC_ADDRESS_LEN);
                csrScanResultPurge(pMac, hScanResult);
             }
             else
             {
                VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, "%s not found match", __func__);
                pP2pContext->formationReq.targetListenChannel = 0;
-               vos_mem_copy(pP2pContext->formationReq.deviceAddress, pP2pContext->peerMacAddress, P2P_MAC_ADDRESS_LEN);
+               vos_mem_copy(pP2pContext->formationReq.deviceAddress, pP2pContext->peerMacAddress,
+                            P2P_MAC_ADDRESS_LEN);
                status = eHAL_STATUS_SUCCESS;
             }
             vos_mem_free(filter.SSIDs.SSIDList);
@@ -1338,7 +1358,8 @@ static eHalStatus p2pSendActionFrame(tpAniSirGlobal pMac, tANI_U8 HDDSessionID, 
          {
             VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, "%s not found match", __func__);
             pP2pContext->formationReq.targetListenChannel = 0;
-            vos_mem_copy(pP2pContext->formationReq.deviceAddress, pP2pContext->peerMacAddress, P2P_MAC_ADDRESS_LEN);
+            vos_mem_copy(pP2pContext->formationReq.deviceAddress,
+                         pP2pContext->peerMacAddress, P2P_MAC_ADDRESS_LEN);
             status = eHAL_STATUS_SUCCESS;
          }    
       }
@@ -1410,9 +1431,9 @@ eHalStatus p2pCreateSendActionFrame(tHalHandle hHal, tANI_U8 HDDSessionID,
          pP2pContext->ActionFrameSendTimeout = WLAN_P2P_DEF_ACTION_FRM_TIMEOUT_VALUE;
       }
 
-      status = palTimerStart(pMac->hHdd, pP2pContext->actionFrameTimer, 
-                        pP2pContext->ActionFrameSendTimeout * PAL_TIMER_TO_MS_UNIT, eANI_BOOLEAN_FALSE);
-      if (!HAL_STATUS_SUCCESS(status))
+      status = vos_timer_start(&pP2pContext->actionFrameTimer,
+                        pP2pContext->ActionFrameSendTimeout);
+      if (!VOS_IS_STATUS_SUCCESS(status))
       {
          tCsrRoamInfo RoamInfo;
 
@@ -1498,8 +1519,8 @@ static eHalStatus p2pListenStateDiscoverableCallback(tHalHandle halHandle, void 
       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, "%s restart listen timer expire time %d",
                   __func__, p2pContext->expire_time);
       //We can restart the listening
-      status = palTimerStart(pMac->hHdd, p2pContext->listenTimerHandler, p2pContext->expire_time, eANI_BOOLEAN_FALSE);
-      if (eHAL_STATUS_SUCCESS != status)
+      status = vos_timer_start(&p2pContext->listenTimerHandler, (p2pContext->expire_time)/PAL_TIMER_TO_MS_UNIT);
+      if (!VOS_IS_STATUS_SUCCESS(status))
       {
          VOS_ASSERT(status);
       }
@@ -1532,7 +1553,8 @@ eHalStatus P2P_ListenStateDiscoverable(tHalHandle hHal, tANI_U8 sessionId,
 
          if (pMac->p2pContext[sessionId].listenTimerHandler)
          {
-            status = palTimerStop(pMac->hHdd, pMac->p2pContext[sessionId].listenTimerHandler);
+            vos_timer_stop(&pMac->p2pContext[sessionId].listenTimerHandler);
+            status = eHAL_STATUS_SUCCESS;
             VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, "%s Timer Stop status %d",
                         __func__, status);
          }
@@ -1573,7 +1595,7 @@ eHalStatus P2P_ListenStateDiscoverable(tHalHandle hHal, tANI_U8 sessionId,
       pMac->p2pContext[sessionId].listenDuration = P2P_LISTEN_TIMEOUT_HIGH;
       if (pMac->p2pContext[sessionId].state == eP2P_STATE_DISCONNECTED)
       {
-         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, "%s Calling RemainOnChannel with diration %d on channel %d",
+         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, "%s Calling RemainOnChannel with duration %d on channel %d",
                      __func__, pMac->p2pContext[sessionId].listenDuration, pMac->p2pContext[sessionId].P2PListenChannel);
          p2pRemainOnChannel( pMac, pMac->p2pContext[sessionId].SMEsessionId, pMac->p2pContext[sessionId].P2PListenChannel, 
                               pMac->p2pContext[sessionId].listenDuration, p2pListenStateDiscoverableCallback, 
@@ -1605,7 +1627,7 @@ eHalStatus P2P_ListenStateDiscoverable(tHalHandle hHal, tANI_U8 sessionId,
 
       if (pMac->p2pContext[sessionId].state == eP2P_STATE_DISCONNECTED)
       {
-         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, "%s Calling RemainOnChannel with diration %d on channel %d",
+         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, "%s Calling RemainOnChannel with duration %d on channel %d",
                      __func__, pMac->p2pContext[sessionId].listenDuration, pMac->p2pContext[sessionId].P2PListenChannel);
          p2pRemainOnChannel( pMac, pMac->p2pContext[sessionId].SMEsessionId, pMac->p2pContext[sessionId].P2PListenChannel, 
                               pMac->p2pContext[sessionId].listenDuration, p2pListenStateDiscoverableCallback, 
@@ -1691,8 +1713,9 @@ eHalStatus p2pGetResultFilter(tp2pContext *pP2pContext,
          directedDiscoveryFilter = pP2pContext->directedDiscoveryFilter;
          if (pFilter->BSSIDs.numOfBSSIDs)
          {
-            bssid = ( tCsrBssid *) vos_mem_malloc( sizeof( tCsrBssid ) * pFilter->BSSIDs.numOfBSSIDs );
-            if(NULL == bssid)
+            bssid = ( tCsrBssid *) vos_mem_malloc(
+                       sizeof( tCsrBssid ) * pFilter->BSSIDs.numOfBSSIDs );
+            if (NULL == bssid)
             {
                VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
                   " %s fail to allocate bssid", __func__);
@@ -1704,7 +1727,8 @@ eHalStatus p2pGetResultFilter(tp2pContext *pP2pContext,
 
             for (i = 0; i < uNumDeviceFilters; i++)
             {
-               vos_mem_copy(bssid, directedDiscoveryFilter->DeviceID, P2P_MAC_ADDRESS_LEN);
+               vos_mem_copy(bssid, directedDiscoveryFilter->DeviceID,
+                            P2P_MAC_ADDRESS_LEN);
                bssid += sizeof(tCsrBssid);
                directedDiscoveryFilter += sizeof(tp2pDiscoverDeviceFilter);
             }
@@ -1713,9 +1737,9 @@ eHalStatus p2pGetResultFilter(tp2pContext *pP2pContext,
          directedDiscoveryFilter = pP2pContext->directedDiscoveryFilter;
          if (pFilter->SSIDs.numOfSSIDs)
          {
-            pFilter->SSIDs.SSIDList = (tCsrSSIDInfo *)vos_mem_malloc( sizeof( *pFilter->SSIDs.SSIDList ) *
-                                                      pFilter->SSIDs.numOfSSIDs );
-            if(NULL == pFilter->SSIDs.SSIDList)
+            pFilter->SSIDs.SSIDList = (tCsrSSIDInfo *)vos_mem_malloc(
+                    sizeof( *pFilter->SSIDs.SSIDList ) * pFilter->SSIDs.numOfSSIDs );
+            if (NULL == pFilter->SSIDs.SSIDList)
             {
                VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
                   " %s fail to allocate bssid", __func__);
@@ -1817,7 +1841,8 @@ eHalStatus P2P_DiscoverRequest(tHalHandle hHal,
    if (pDiscoverRequest->uIELen)
    {
       pP2pContext->DiscoverReqIeField = (tANI_U8 *)vos_mem_malloc(pDiscoverRequest->uIELen);
-      vos_mem_copy((tANI_U8 *)pP2pContext->DiscoverReqIeField, pDiscoverRequest->pIEField, pDiscoverRequest->uIELen);
+      vos_mem_copy((tANI_U8 *)pP2pContext->DiscoverReqIeField,
+                   pDiscoverRequest->pIEField, pDiscoverRequest->uIELen);
       pP2pContext->DiscoverReqIeLength = pDiscoverRequest->uIELen;
    } 
    else
@@ -1847,7 +1872,7 @@ eHalStatus P2P_DiscoverRequest(tHalHandle hHal,
             }
             pP2pContext->directedDiscoveryFilter = (tp2pDiscoverDeviceFilter *)
                   vos_mem_malloc(sizeof(tp2pDiscoverDeviceFilter) * uNumDeviceFilters);
-            if(NULL == pP2pContext->directedDiscoveryFilter)
+            if (NULL == pP2pContext->directedDiscoveryFilter)
             {
                VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
                   "%s fail to allocate memory for discoverFilter", __func__);
@@ -1860,8 +1885,8 @@ eHalStatus P2P_DiscoverRequest(tHalHandle hHal,
          pDeviceFilters = pDiscoverRequest->pDeviceFilters;
          if(NULL != pDeviceFilters)
          {
-            vos_mem_copy ( pP2pContext->directedDiscoveryFilter, pDeviceFilters,
-                              sizeof(tp2pDiscoverDeviceFilter) * uNumDeviceFilters);
+            vos_mem_copy (pP2pContext->directedDiscoveryFilter, pDeviceFilters,
+                          sizeof(tp2pDiscoverDeviceFilter) * uNumDeviceFilters);
 
             if(!HAL_STATUS_SUCCESS(status = p2pGetResultFilter(pP2pContext, &filter)))
             {
@@ -1892,7 +1917,8 @@ eHalStatus P2P_DiscoverRequest(tHalHandle hHal,
             if (pDiscoverRequest->uNumDeviceFilters == 1 && filter.BSSIDs.numOfBSSIDs == 1)
             {
                vos_mem_copy(&pP2pContext->formationReq.deviceAddress, 
-                              pDiscoverRequest->pDeviceFilters->DeviceID, P2P_MAC_ADDRESS_LEN);
+                            pDiscoverRequest->pDeviceFilters->DeviceID,
+                            P2P_MAC_ADDRESS_LEN);
             }
          }
       }
@@ -1912,9 +1938,9 @@ eHalStatus P2P_DiscoverRequest(tHalHandle hHal,
 
       pP2pContext->uDiscoverTimeout = pDiscoverRequest->uDiscoverTimeout;
       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO_MED, "%s Start discover", __func__);
-      status = palTimerStart(pMac->hHdd, pP2pContext->discoverTimer, 
-                     pP2pContext->uDiscoverTimeout * 1000, eANI_BOOLEAN_FALSE);
-      if(!HAL_STATUS_SUCCESS(status))
+      status = vos_timer_start(&pP2pContext->discoverTimer,
+                     pP2pContext->uDiscoverTimeout);
+      if (!VOS_IS_STATUS_SUCCESS(status))
       {
          VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
             "%s failt to start discover timer", __func__);
@@ -1978,7 +2004,7 @@ eHalStatus p2pScanRequest(tp2pContext *p2pContext, p2pDiscoverCompleteCallback c
    /* set the scan type to active */
    scanRequest.scanType = eSIR_ACTIVE_SCAN;
 
-   vos_mem_set( scanRequest.bssid, sizeof( tCsrBssid ), 0xff );
+   vos_mem_set(scanRequest.bssid, sizeof( tCsrBssid ), 0xff);
 
    scanRequest.requestType = eCSR_SCAN_P2P_FIND_PEER;
    /* set min and max channel time to zero */
@@ -1993,7 +2019,8 @@ eHalStatus p2pScanRequest(tp2pContext *p2pContext, p2pDiscoverCompleteCallback c
    scanRequest.p2pSearch = VOS_FALSE;
        
    P2P_GetIE(p2pContext, p2pContext->sessionId, eP2P_GROUP_ID, &p2pIe, &p2pIeLen);
-   vos_mem_copy(scanRequest.bssid, ((tP2PGroupId *)p2pIe)->deviceAddress, P2P_MAC_ADDRESS_LEN);
+   vos_mem_copy(scanRequest.bssid, ((tP2PGroupId *)p2pIe)->deviceAddress,
+                P2P_MAC_ADDRESS_LEN);
 
    P2P_GetIE(p2pContext, p2pContext->sessionId, eP2P_PROBE_REQ,  &scanRequest.pIEField, &len);
 
@@ -2120,7 +2147,7 @@ eHalStatus p2pStopDiscovery(tHalHandle hHal, tANI_U8 SessionID)
    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
    eHalStatus status = eHAL_STATUS_SUCCESS;
 
-   status = palTimerStop(pMac->hHdd, pMac->p2pContext[SessionID].discoverTimer);
+   status = vos_timer_stop(&pMac->p2pContext[SessionID].discoverTimer);
    if (status != eHAL_STATUS_SUCCESS)
    {
       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s Timer Stop status %d",  __func__, status);
@@ -2167,7 +2194,7 @@ eHalStatus p2pPurgeDeviceList(tpAniSirGlobal pMac, tDblLinkList *pList)
             csrFreeScanResultEntry( pMac, pBssResult );
          }
       }
-      palFreeMemory(pMac->hHdd, pIes);
+      vos_mem_free(pIes);
       pEntry = pNext;
    }
 
@@ -2245,10 +2272,12 @@ eHalStatus p2pProcessNoAReq(tpAniSirGlobal pMac, tSmeCmd *pNoACmd)
     tSirMsgQ msg;
     eHalStatus status = eHAL_STATUS_SUCCESS;
 
-    status = palAllocateMemory(pMac->hHdd, (void**)&pNoA, sizeof(tP2pPsConfig));
-    if(HAL_STATUS_SUCCESS(status))
+    pNoA = vos_mem_malloc(sizeof(tP2pPsConfig));
+    if ( NULL == pNoA )
+        status = eHAL_STATUS_FAILURE;
+    else
     {
-        palZeroMemory(pMac->hHdd, pNoA, sizeof(tP2pPsConfig));
+        vos_mem_set(pNoA, sizeof(tP2pPsConfig), 0);
         pNoA->opp_ps = pNoACmd->u.NoACmd.NoA.opp_ps;
         pNoA->ctWindow = pNoACmd->u.NoACmd.NoA.ctWindow;
         pNoA->duration = pNoACmd->u.NoACmd.NoA.duration;

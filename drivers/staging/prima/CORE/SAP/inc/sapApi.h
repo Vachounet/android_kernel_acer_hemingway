@@ -331,6 +331,11 @@ typedef struct sap_AssocMacAddr_s {
     v_MACADDR_t staMac;     /*MAC address of Station that is associated*/
     v_U8_t      assocId;        /*Association ID for the station that is associated*/
     v_U8_t      staId;            /*Station Id that is allocated to the station*/
+    v_U8_t      ShortGI40Mhz;
+    v_U8_t      ShortGI20Mhz;
+    v_U8_t      Support40Mhz;
+    v_U32_t     requestedMCRate;
+    tSirSupportedRates supportedRates;
 } tSap_AssocMacAddr, *tpSap_AssocMacAddr;
 
 /*struct corresponding to SAP_ASSOC_STA_CALLBACK_EVENT */
@@ -575,6 +580,14 @@ typedef struct sap_SoftapStats_s {
 #endif
 } tSap_SoftapStats, *tpSap_SoftapStats;
 
+#ifdef FEATURE_WLAN_CH_AVOID
+/* Store channel safty information */
+typedef struct
+{
+   v_U16_t   channelNumber;
+   v_BOOL_t  isSafe;
+} safeChannelType;
+#endif /* FEATURE_WLAN_CH_AVOID */
 
 int sapSetPreferredChannel(tANI_U8* ptr);
 void sapCleanupChannelList(void);

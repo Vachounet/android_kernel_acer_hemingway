@@ -43,6 +43,10 @@
 #if !defined( __I_VOS_TRACE_H )
 #define __I_VOS_TRACE_H
 
+#if !defined(__printf)
+#define __printf(a,b)
+#endif
+
 /**=========================================================================
   
   \file  i_vos_trace.h
@@ -84,7 +88,11 @@
    \return  nothing
     
   --------------------------------------------------------------------------*/
-void vos_trace_msg( VOS_MODULE_ID module, VOS_TRACE_LEVEL level, char *strFormat, ... );
+void __printf(3,4) vos_trace_msg( VOS_MODULE_ID module, VOS_TRACE_LEVEL level,
+                                  char *strFormat, ... );
+
+void vos_trace_hex_dump( VOS_MODULE_ID module, VOS_TRACE_LEVEL level,
+                                void *data, int buf_len );
 
 void vos_trace_display(void);
 
@@ -102,12 +110,15 @@ void vos_trace_setValue( VOS_MODULE_ID module, VOS_TRACE_LEVEL level, v_U8_t on 
 // without being bogged down by all the tracing in the code.
 #if defined( WLAN_DEBUG )
 #define VOS_TRACE vos_trace_msg
+#define VOS_TRACE_HEX_DUMP vos_trace_hex_dump
 #else
-#define VOS_TRACE(arg...) 
+#define VOS_TRACE(arg...)
+#define VOS_TRACE_HEX_DUMP(arg...)
 #endif
 
 
-void vos_snprintf(char *strBuffer, unsigned  int size, char *strFormat, ...);
+void __printf(3,4) vos_snprintf(char *strBuffer, unsigned  int size,
+                                char *strFormat, ...);
 #define VOS_SNPRINTF vos_snprintf
 
 #ifdef VOS_ENABLE_TRACING

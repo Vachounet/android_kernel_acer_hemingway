@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -59,9 +59,6 @@
   Are listed for each API below.
 
 
-  Copyright (c) 2010 QUALCOMM Incorporated.
-  All Rights Reserved.
-  Qualcomm Confidential and Proprietary
 ===========================================================================*/
 
 /*===========================================================================
@@ -399,6 +396,7 @@ WDI_FillTxBd
     wpt_uint8              ucTxFlag, 
     wpt_uint8              ucProtMgmtFrame,
     wpt_uint32             uTimeStamp,
+    wpt_uint8              isEapol,
     wpt_uint8*             staIndex
 )
 {
@@ -424,7 +422,7 @@ WDI_FillTxBd
     ucSubType = (ucTypeSubtype & WDI_FRAME_SUBTYPE_MASK);
 
     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN, 
-               "Type: %d/%d, MAC S: %08x. MAC D: %08x., Tid=%d, frmXlat=%d, pTxBD=%08x ucTxFlag 0x%X\n", 
+               "Type: %d/%d, MAC S: %08x. MAC D: %08x., Tid=%d, frmXlat=%d, pTxBD=%p ucTxFlag 0x%X",
                 ucType, ucSubType, 
                 *((wpt_uint32 *) pAddr2), 
                *((wpt_uint32 *) pDestMacAddr), 
@@ -469,6 +467,8 @@ WDI_FillTxBd
         pBd->dpuRF = BMUWQ_BTQM_TX_MGMT; 
     }
 
+    if(ucTxFlag & WDI_USE_FW_IN_TX_PATH)
+        pBd->dpuRF = BMUWQ_FW_DPU_TX;
 
     pBd->tid           = ucTid; 
     // Clear the reserved field as this field is used for defining special 
@@ -611,16 +611,23 @@ WDI_FillTxBd
          * Sanity: Force HW frame translation OFF for mgmt frames.
          --------------------------------------------------------------------*/
          /* apply to both ucast/mcast mgmt frames */
-         if (useStaRateForBcastFrames)
-         {
-             pBd->bdRate = (ucUnicastDst)? WDI_BDRATE_BCMGMT_FRAME : WDI_TXBD_BDRATE_DEFAULT; 
-         }
-         else
+         /* Probe requests are sent using BD rate */
+         if( ucSubType ==  WDI_MAC_MGMT_PROBE_REQ )
          {
              pBd->bdRate = WDI_BDRATE_BCMGMT_FRAME;
          }
-
-         if ( ucTxFlag & WDI_USE_BD_RATE2_FOR_MANAGEMENT_FRAME) 
+         else
+         {
+             if (useStaRateForBcastFrames)
+             {
+                 pBd->bdRate = (ucUnicastDst)? WDI_BDRATE_BCMGMT_FRAME : WDI_TXBD_BDRATE_DEFAULT;
+             }
+             else
+             {
+                 pBd->bdRate = WDI_BDRATE_BCMGMT_FRAME;
+             }
+         }
+         if ( ucTxFlag & WDI_USE_BD_RATE2_FOR_MANAGEMENT_FRAME)
          {
            pBd->bdRate = WDI_BDRATE_CTRL_FRAME;
          }
@@ -672,7 +679,8 @@ WDI_FillTxBd
         /* Mark the BD could not be reused */
         uTxBdSignature = WDI_TXBD_SIG_MGMT_MAGIC; 
 #endif
-        if(ucTxFlag & WDI_USE_SELF_STA_REQUESTED_MASK)
+        if((ucTxFlag & WDI_USE_SELF_STA_REQUESTED_MASK) &&
+            !(ucIsRMF && ucProtMgmtFrame))
         {
 #ifdef HAL_SELF_STA_PER_BSS
             // Get the (self) station index from ADDR2, which should be the self MAC addr
@@ -686,7 +694,7 @@ WDI_FillTxBd
                 return WDI_STATUS_E_NOT_ALLOWED;
            }
 #else
-            ucStaId = pWDICtx->ucSelfStaId;
+           ucStaId = pWDICtx->ucSelfStaId;
 #endif
         }
         else
@@ -813,7 +821,9 @@ WDI_FillTxBd
               }
               ucStaId = pBSSSes->bcastStaIdx;
            }
-         }    
+         }
+
+        WPAL_TRACE(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_INFO,"StaId:%d and ucTxFlag:%02x", ucStaId, ucTxFlag);
 
         pBd->staIndex = ucStaId;
         
@@ -849,25 +859,7 @@ WDI_FillTxBd
                 if(!ucUnicastDst)
                     pBd->dpuDescIdx = pSta->bcastMgmtDpuIndex; /* IGTK */
                 else
-                {
-                    wpt_uint8 peerStaId;
-
-                    //We need to find the peer's station's DPU index to send this
-                    //frame using PTK
-                    wdiStatus = WDI_STATableFindStaidByAddr( pWDICtx,
-                                        *(wpt_macAddr*)pDestMacAddr, &peerStaId );
-                    if (WDI_STATUS_SUCCESS != wdiStatus)
-                    {
-                        WPAL_TRACE(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
-                           "%s failed to find peer sta %02X-%02X-%02X-%02X-%02X-%02X",
-                           __FUNCTION__, ((wpt_uint8 *)pDestMacAddr)[0],
-                           ((wpt_uint8 *)pDestMacAddr)[1], ((wpt_uint8 *)pDestMacAddr)[5],
-                           ((wpt_uint8 *)pDestMacAddr)[3], ((wpt_uint8 *)pDestMacAddr)[4],
-                           ((wpt_uint8 *)pDestMacAddr)[5]);
-                        return WDI_STATUS_E_FAILURE;
-                    }
-                    pBd->dpuDescIdx = ((WDI_StaStruct*)pWDICtx->staTable)[peerStaId].dpuIndex; /* PTK */
-                }
+                    pBd->dpuDescIdx = pSta->dpuIndex; /* PTK */
             }
             else
             {
@@ -932,7 +924,7 @@ WDI_FillTxBd
 #ifdef FEATURE_WLAN_TDLS
                   (ucSTAType == WDI_STA_ENTRY_TDLS_PEER ) &&
 #endif
-                  (ucTxFlag & WDI_TRIGGER_ENABLED_AC_MASK)))
+                  (ucTxFlag & WDI_TRIGGER_ENABLED_AC_MASK)) || isEapol)
        {
            pBd->dpuRF = BMUWQ_FW_DPU_TX;
        }

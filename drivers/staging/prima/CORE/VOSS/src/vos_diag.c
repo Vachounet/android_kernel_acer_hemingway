@@ -131,6 +131,14 @@ void vos_log_submit(v_VOID_t *plog_hdr_ptr)
      /*Get the Hdd Context */
     pHddCtx = ((VosContextType*)(pVosContext))->pHDDContext;
 
+#ifdef WLAN_KD_READY_NOTIFIER
+    /* NL is not ready yet, WLAN KO started first */
+    if ((pHddCtx->kd_nl_init) && (!pHddCtx->ptt_pid))
+    {
+        nl_srv_nl_ready_indication();
+    }
+#endif /* WLAN_KD_READY_NOTIFIER */
+
    /* Send the log data to the ptt app only if it is registered with the wlan driver*/
     if(pHddCtx->ptt_pid)
     {
@@ -142,7 +150,7 @@ void vos_log_submit(v_VOID_t *plog_hdr_ptr)
     
         if(!pBuf)
         {
-            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, "vos_mem_malloc failed\n");
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, "vos_mem_malloc failed");
             return;
         }
         
@@ -166,7 +174,9 @@ void vos_log_submit(v_VOID_t *plog_hdr_ptr)
         {
             if( ptt_sock_send_msg_to_app(wmsg, 0, ANI_NL_MSG_PUMAC, pHddCtx->ptt_pid) < 0) {
         
-                VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, ("Ptt Socket error sending message to the app!!\n"));
+                VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                          ("Ptt Socket error sending message to the app!!"));
+                vos_mem_free((v_VOID_t *)wmsg);
                 return;
             }
        
@@ -205,6 +215,13 @@ void vos_event_report_payload(v_U16_t event_Id, v_U16_t length, v_VOID_t *pPaylo
      /*Get the Hdd Context */
     pHddCtx = ((VosContextType*)(pVosContext))->pHDDContext;
 
+#ifdef WLAN_KD_READY_NOTIFIER
+    /* NL is not ready yet, WLAN KO started first */
+    if ((pHddCtx->kd_nl_init) && (!pHddCtx->ptt_pid))
+    {
+        nl_srv_nl_ready_indication();
+    }
+#endif /* WLAN_KD_READY_NOTIFIER */
     
     /* Send the log data to the ptt app only if it is registered with the wlan driver*/
     if(pHddCtx->ptt_pid)
@@ -215,7 +232,7 @@ void vos_event_report_payload(v_U16_t event_Id, v_U16_t length, v_VOID_t *pPaylo
     
         if(!pBuf)
         {
-            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, "vos_mem_malloc failed\n");
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, "vos_mem_malloc failed");
             return;
         }
         wmsg = (tAniHdr*)pBuf;
@@ -234,8 +251,9 @@ void vos_event_report_payload(v_U16_t event_Id, v_U16_t length, v_VOID_t *pPaylo
         memcpy(pBuf, pPayload,length);
       
         if( ptt_sock_send_msg_to_app(wmsg, 0, ANI_NL_MSG_PUMAC, pHddCtx->ptt_pid) < 0) {
-    
-            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, ("Ptt Socket error sending message to the app!!\n"));
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                       ("Ptt Socket error sending message to the app!!"));
+            vos_mem_free((v_VOID_t*)wmsg);
             return;
         }
     

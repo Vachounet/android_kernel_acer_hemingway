@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -99,7 +99,11 @@
 #include "wlan_qct_wdi.h"
 #include "wlan_qct_wdi_i.h"
 #ifdef CONFIG_ANDROID
+#ifdef EXISTS_MSM_SMD
 #include <mach/msm_smd.h>
+#else
+#include <soc/qcom/smd.h>
+#endif
 #include <linux/delay.h>
 #else
 #include "msm_smd.h"
@@ -659,7 +663,7 @@ WCTS_OpenTransport
     * the SMD port was never closed during SSR*/
    if (gwctsHandle) {
        WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO,
-               "WCTS_OpenTransport port is already open\n");
+               "WCTS_OpenTransport port is already open");
 
        pWCTSCb = gwctsHandle;
        if (WCTS_CB_MAGIC != pWCTSCb->wctsMagic) {
@@ -734,9 +738,11 @@ WCTS_OpenTransport
     */
    pWCTSCb->wctsOpenMsg.callback = WCTS_PALOpenCallback;
    pWCTSCb->wctsOpenMsg.pContext = pWCTSCb;
+   pWCTSCb->wctsOpenMsg.type= WPAL_MC_MSG_SMD_NOTIF_OPEN_SIG;
 
    pWCTSCb->wctsDataMsg.callback = WCTS_PALDataCallback;
    pWCTSCb->wctsDataMsg.pContext = pWCTSCb;
+   pWCTSCb-> wctsDataMsg.type= WPAL_MC_MSG_SMD_NOTIF_DATA_SIG;
 
    /*---------------------------------------------------------------------
      Open the SMD channel

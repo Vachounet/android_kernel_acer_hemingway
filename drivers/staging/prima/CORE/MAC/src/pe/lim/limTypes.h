@@ -135,13 +135,13 @@
 #define LIM_MIN_MEM_ASSOC       4
 
 /// Verifies whether given mac addr matches the CURRENT Bssid
-#define IS_CURRENT_BSSID(pMac, addr,psessionEntry)  (palEqualMemory(pMac->hHdd, addr, \
-                                                                                                psessionEntry->bssId, \
-                                                                                                sizeof(psessionEntry->bssId)))
+#define IS_CURRENT_BSSID(pMac, addr,psessionEntry)  (vos_mem_compare( addr, \
+                                                                      psessionEntry->bssId, \
+                                                                      sizeof(psessionEntry->bssId)))
 /// Verifies whether given addr matches the REASSOC Bssid
-#define IS_REASSOC_BSSID(pMac, addr,psessionEntry)  (palEqualMemory(pMac->hHdd, addr, \
-                                                                                                psessionEntry->limReAssocbssId, \
-                                                                                                sizeof(psessionEntry->limReAssocbssId)))
+#define IS_REASSOC_BSSID(pMac, addr,psessionEntry)  (vos_mem_compare( addr, \
+                                                                      psessionEntry->limReAssocbssId, \
+                                                                      sizeof(psessionEntry->limReAssocbssId)))
 
 #define REQ_TYPE_REGISTRAR                   (0x2)
 #define REQ_TYPE_WLAN_MANAGER_REGISTRAR      (0x3)
@@ -717,7 +717,7 @@ tSirRetStatus limSendLinkReportActionFrame(tpAniSirGlobal, tpSirMacLinkReport, t
 tSirRetStatus limSendRadioMeasureReportActionFrame(tpAniSirGlobal, tANI_U8, tANI_U8, tpSirMacRadioMeasureReport, tSirMacAddr, tpPESession);
 #endif
 
-#ifdef FEATURE_WLAN_CCX
+#if defined(FEATURE_WLAN_CCX) && !defined(FEATURE_WLAN_CCX_UPLOAD)
 void limProcessIappFrame(tpAniSirGlobal, tANI_U8 *,tpPESession);
 #endif
 
@@ -748,10 +748,6 @@ void limSendSmeMgmtTXCompletion(tpAniSirGlobal pMac,
                                 tpPESession psessionEntry,
                                 tANI_U32 txCompleteStatus);
 tSirRetStatus limDeleteTDLSPeers(tpAniSirGlobal pMac, tpPESession psessionEntry);
-#ifdef FEATURE_WLAN_TDLS_OXYGEN_DISAPPEAR_AP
-void limTDLSDisappearAPTrickInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession psessionEntry);
-int limGetTDLSPeerCount(tpAniSirGlobal pMac, tpPESession psessionEntry);
-#endif
 eHalStatus limProcessTdlsAddStaRsp(tpAniSirGlobal pMac, void *msg, tpPESession);
 tSirRetStatus limSendTdlsTeardownFrame(tpAniSirGlobal pMac,
            tSirMacAddr peerMac, tANI_U16 reason, tANI_U8 responder, tpPESession psessionEntry,

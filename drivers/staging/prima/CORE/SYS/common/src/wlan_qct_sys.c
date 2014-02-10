@@ -336,7 +336,13 @@ VOS_STATUS sysMcProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
    VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
    v_VOID_t *hHal;
 
-   VOS_ASSERT( pMsg );
+   if (NULL == pMsg)
+   {
+      VOS_ASSERT(0);
+      VOS_TRACE(VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
+            "%s: NULL pointer to vos_msg_t", __func__);
+      return VOS_STATUS_E_INVAL;
+   }
 
    // All 'new' SYS messages are identified by a cookie in the reserved
    // field of the message as well as the message type.  This prevents
@@ -353,7 +359,7 @@ VOS_STATUS sysMcProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
             /* Handling for this message is not needed now so adding 
              *debug print and VOS_ASSERT*/
             VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
-                       " Received SYS_MSG_ID_MC_START message msgType= %d [0x%08lx]",
+                       " Received SYS_MSG_ID_MC_START message msgType= %d [0x%08x]",
                        pMsg->type, pMsg->type );
             VOS_ASSERT(0);
             break;
@@ -373,7 +379,7 @@ VOS_STATUS sysMcProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
             }
             else
             {
-               vosStatus = sme_Stop( hHal, TRUE );
+               vosStatus = sme_Stop( hHal, HAL_STOP_TYPE_SYS_DEEP_SLEEP);
                VOS_ASSERT( VOS_IS_STATUS_SUCCESS( vosStatus ) );
 
                vosStatus = macStop( hHal, HAL_STOP_TYPE_SYS_DEEP_SLEEP );
@@ -391,23 +397,19 @@ VOS_STATUS sysMcProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
          case SYS_MSG_ID_MC_THR_PROBE:
          {
             VOS_TRACE(VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
-                       " Received SYS_MSG_ID_MC_THR_PROBE message msgType = %d [0x%08lx]",
+                       " Received SYS_MSG_ID_MC_THR_PROBE message msgType = %d [0x%08x]",
                        pMsg->type, pMsg->type);
             break;
          }
 
          case SYS_MSG_ID_MC_TIMER:
          {
-            vos_timer_callback_t timerCB;
-            // hummmm... note says...
-            // invoke the timer callback and the user data stick
-            // into the bodyval; no body to free.    I think this is
-            // what that means.
-            timerCB = (vos_timer_callback_t)pMsg->bodyptr;
+            vos_timer_callback_t timerCB = pMsg->callback;
 
-            // make the callback to the timer routine...
-            timerCB( (v_VOID_t *)pMsg->bodyval );
-
+            if (NULL != timerCB)
+            {
+               timerCB(pMsg->bodyptr);
+            }
             break;
          }
          case SYS_MSG_ID_FTM_RSP:
@@ -419,7 +421,7 @@ VOS_STATUS sysMcProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
          default:
          {
             VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
-                       "Unknown message type in sysMcProcessMsg() msgType= %d [0x%08lx]",
+                       "Unknown message type in sysMcProcessMsg() msgType= %d [0x%08x]",
                        pMsg->type, pMsg->type );
             break;
         }
@@ -439,7 +441,7 @@ VOS_STATUS sysMcProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
 
             VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
                        "Received SYS message cookie with unidentified "
-                       "MC message type= %d [0x%08lX]", pMsg->type, pMsg->type );
+                       "MC message type= %d [0x%08X]", pMsg->type, pMsg->type );
 
             vosStatus = VOS_STATUS_E_BADMSG;
             if (pMsg->bodyptr) 
@@ -459,7 +461,13 @@ VOS_STATUS sysTxProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
 {
    VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
 
-   VOS_ASSERT( pMsg );
+   if (NULL == pMsg)
+   {
+      VOS_ASSERT(0);
+      VOS_TRACE(VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
+            "%s: NULL pointer to vos_msg_t", __func__);
+      return VOS_STATUS_E_INVAL;
+   }
 
    // All 'new' SYS messages are identified by a cookie in the reserved
    // field of the message as well as the message type.  This prevents
@@ -478,7 +486,7 @@ VOS_STATUS sysTxProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
            /* Handling for this message is not needed now so adding 
             * debug print and VOS_ASSERT*/
             VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
-                       " Received SYS_MSG_ID_TX_THR_PROBE message msgType= %d [0x%08lx]",
+                       " Received SYS_MSG_ID_TX_THR_PROBE message msgType= %d [0x%08x]",
                        pMsg->type, pMsg->type );
             VOS_ASSERT(0);
 
@@ -487,24 +495,19 @@ VOS_STATUS sysTxProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
 
          case SYS_MSG_ID_TX_TIMER:
          {
-            vos_timer_callback_t timerCB;
+            vos_timer_callback_t timerCB = pMsg->callback;
 
-            // hummmm... note says...
-            // invoke the timer callback and the user data stick
-            // into the bodyval; no body to free.    I think this is
-            // what that means.
-            timerCB = (vos_timer_callback_t)pMsg->bodyptr;
-
-            // make the callback to the timer routine...
-            timerCB( (v_VOID_t *)pMsg->bodyval );
-
+            if (NULL != timerCB)
+            {
+               timerCB(pMsg->bodyptr);
+            }
             break;
          }
 
          default:
          {
             VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
-                       "Unknown message type in sysTxProcessMsg() msgType= %d [0x%08lx]",
+                       "Unknown message type in sysTxProcessMsg() msgType= %d [0x%08x]",
                        pMsg->type, pMsg->type );
             break;
         }
@@ -517,7 +520,7 @@ VOS_STATUS sysTxProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
 
       VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
                  "Received SYS message cookie with unidentified TX message "
-                 " type= %d [0x%08lX]", pMsg->type, pMsg->type );
+                 " type= %d [0x%08X]", pMsg->type, pMsg->type );
 
       vosStatus = VOS_STATUS_E_BADMSG;
    }   // end else
@@ -530,7 +533,13 @@ VOS_STATUS sysRxProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
 {
    VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
 
-   VOS_ASSERT( pMsg );
+   if (NULL == pMsg)
+   {
+      VOS_ASSERT(0);
+      VOS_TRACE(VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
+            "%s: NULL pointer to vos_msg_t", __func__);
+      return VOS_STATUS_E_INVAL;
+   }
 
    // All 'new' SYS messages are identified by a cookie in the reserved
    // field of the message as well as the message type.  This prevents
@@ -544,24 +553,19 @@ VOS_STATUS sysRxProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
       {
          case SYS_MSG_ID_RX_TIMER:
          {
-            vos_timer_callback_t timerCB;
+            vos_timer_callback_t timerCB = pMsg->callback;
 
-            // hummmm... note says...
-            // invoke the timer callback and the user data stick
-            // into the bodyval; no body to free.    I think this is
-            // what that means.
-            timerCB = (vos_timer_callback_t)pMsg->bodyptr;
-
-            // make the callback to the timer routine...
-            timerCB( (v_VOID_t *)pMsg->bodyval );
-
+            if (NULL != timerCB)
+            {
+               timerCB(pMsg->bodyptr);
+            }
             break;
          }
 
          default:
          {
             VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
-                       "Unknown message type in sysRxProcessMsg() msgType= %d [0x%08lx]",
+                       "Unknown message type in sysRxProcessMsg() msgType= %d [0x%08x]",
                        pMsg->type, pMsg->type );
             break;
         }
@@ -574,7 +578,7 @@ VOS_STATUS sysRxProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
 
       VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
                  "Received SYS message cookie with unidentified RX message "
-                 " type= %d [0x%08lX]", pMsg->type, pMsg->type );
+                 " type= %d [0x%08X]", pMsg->type, pMsg->type );
 
       vosStatus = VOS_STATUS_E_BADMSG;
    }   // end else
@@ -724,7 +728,7 @@ SysProcessMmhMsg
     /* free the mem and return */
     if(pMsg->bodyptr)
     {
-      palFreeMemory( pMac->hHdd, pMsg->bodyptr);
+      vos_mem_free( pMsg->bodyptr);
     }
   }
 
