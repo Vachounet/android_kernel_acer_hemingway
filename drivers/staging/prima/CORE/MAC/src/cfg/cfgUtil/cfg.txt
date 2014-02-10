@@ -1,4 +1,4 @@
- *
+/*
  * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -17,7 +17,7 @@
  * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
- *
+ */
 * Copyright (c) 2012, The Linux Foundation. All rights reserved.
 *
 * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -4571,17 +4571,6 @@ NV    RW    NP
 HAL
 0    1    1
 *
-* Oxygen network data (prop IE for IBSS)
-*
-WNI_CFG_OXYGEN_NETWORK_DATA   I    2    0
-V    RW    NP
-SCH
-0    0x2000   0x2000
-V    RW    NP
-SCH
-0    0x2000   0x2000
-
-*
 * FlexConnect Power Factor
 * Default is set to 0 (disable)
 *
@@ -4610,13 +4599,14 @@ V    RW    NP
 HAL
 0    3    0
 
+* GO Link Monitor Timeout (TU)
 *
-* ATH Enable/Disable
+WNI_CFG_GO_LINK_MONITOR_TIMEOUT    I    4    7
+V    RW    NP
+HAL
+3   50    10
+V    RW    NP
+HAL
+3   50    10
 *
-WNI_CFG_ATH_DISABLE       I    4    7
-V    RW    NP
-NONE
-0    1    0
-V    RW    NP
-NONE
-0    1    0
+*

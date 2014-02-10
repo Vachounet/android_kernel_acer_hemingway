@@ -97,7 +97,7 @@ typedef struct sAniSirGlobal *tpAniSirGlobal;
 #include "smeRrmInternal.h"
 #include "rrmGlobal.h"
 #endif
-#if defined(FEATURE_WLAN_CCX) && !defined(FEATURE_WLAN_CCX_UPLOAD)
+#if defined FEATURE_WLAN_CCX
 #include "ccxApi.h"
 #include "ccxGlobal.h"
 #endif
@@ -920,6 +920,7 @@ tLimMlmOemDataRsp       *gpLimMlmOemDataRsp;
     tANI_U8 deferredMsgCnt;
     tSirDFSChannelList    dfschannelList;
     tANI_U8 deauthMsgCnt;
+    tANI_U8 gLimIbssStaLimit;
 } tAniSirLim, *tpAniSirLim;
 
 typedef struct sLimMgmtFrameRegistration

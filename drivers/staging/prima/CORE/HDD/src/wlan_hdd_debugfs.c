@@ -39,7 +39,7 @@ static ssize_t wcnss_wowpattern_write(struct file *file,
 {
     hdd_adapter_t *pAdapter = (hdd_adapter_t *)file->private_data;
 
-    char cmd[MAX_USER_COMMAND_SIZE_WOWL_PATTERN + 1];
+    char cmd[MAX_USER_COMMAND_SIZE_WOWL_PATTERN];
     char *sptr, *token;
     v_U8_t pattern_idx = 0;
     v_U8_t pattern_offset = 0;
@@ -62,8 +62,8 @@ static ssize_t wcnss_wowpattern_write(struct file *file,
 
         return -EINVAL;
     }
-
-    if (count > MAX_USER_COMMAND_SIZE_WOWL_PATTERN)
+    /*take count as ending  into consideration*/
+    if (count >=  MAX_USER_COMMAND_SIZE_WOWL_PATTERN)
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                    "%s: Command length is larger than %d bytes.",
@@ -117,7 +117,7 @@ static ssize_t wcnss_patterngen_write(struct file *file,
                const char __user *buf, size_t count, loff_t *ppos)
 {
     hdd_adapter_t *pAdapter = (hdd_adapter_t *)file->private_data;
-    hdd_context_t *pHddCtx;
+    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
     tSirAddPeriodicTxPtrn *addPeriodicTxPtrnParams;
     tSirDelPeriodicTxPtrn *delPeriodicTxPtrnParams;
 
@@ -137,8 +137,6 @@ static ssize_t wcnss_patterngen_write(struct file *file,
         return -EINVAL;
     }
 
-    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
-
     if (!sme_IsFeatureSupportedByFW(WLAN_PERIODIC_TX_PTRN))
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
@@ -149,8 +147,8 @@ static ssize_t wcnss_patterngen_write(struct file *file,
     }
 
     /* Get command from user */
-    if (count <= MAX_USER_COMMAND_SIZE_FRAME)
-        cmd = vos_mem_malloc(count + 1);
+    if (count < MAX_USER_COMMAND_SIZE_FRAME)
+        cmd = vos_mem_malloc(count);
     else
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
@@ -222,7 +220,7 @@ static ssize_t wcnss_patterngen_write(struct file *file,
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                    "%s: Not in Connected state!", __func__);
-        vos_mem_free(cmd);
+
         return -EINVAL;
     }
 
@@ -289,7 +287,7 @@ static ssize_t wcnss_patterngen_write(struct file *file,
 
 failure:
     vos_mem_free(cmd);
-    return -EINVAL;
+    return EINVAL;
 }
 
 static int wcnss_debugfs_open(struct inode *inode, struct file *file)

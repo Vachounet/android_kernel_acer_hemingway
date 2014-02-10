@@ -58,7 +58,7 @@
 #include "aniSystemDefs.h"
 #include "sirParams.h"
 
-#if defined(FEATURE_WLAN_CCX) && !defined(FEATURE_WLAN_CCX_UPLOAD)
+#ifdef FEATURE_WLAN_CCX
 #include "ccxGlobal.h"
 #endif
 
@@ -647,8 +647,6 @@ typedef struct sSirSmeStartBssReq
 
     tANI_U8                 txLdpcIniFeatureEnabled;
 
-    tANI_U8                 oxygenNwkIniFeatureEnabled;
-
     tSirRSNie               rsnIE;             // RSN IE to be sent in
                                                // Beacon and Probe
                                                // Response frames
@@ -888,6 +886,21 @@ typedef struct sSirSmeScanReq
       up to uIEFieldLen (can be 0)
       -----------------------------*/
 } tSirSmeScanReq, *tpSirSmeScanReq;
+
+typedef struct sSirSmeScanAbortReq
+{
+    tANI_U16        type;
+    tANI_U16        msgLen;
+    tANI_U8         sessionId;
+} tSirSmeScanAbortReq, *tpSirSmeScanAbortReq;
+
+typedef struct sSirSmeScanChanReq
+{
+    tANI_U16        type;
+    tANI_U16        msgLen;
+    tANI_U8         sessionId;
+    tANI_U16        transcationId;
+} tSirSmeGetScanChanReq, *tpSirSmeGetScanChanReq;
 
 #ifdef FEATURE_OEM_DATA_SUPPORT
 
@@ -2131,60 +2144,6 @@ typedef struct sAniGetRoamRssiRsp
 } tAniGetRoamRssiRsp, *tpAniGetRoamRssiRsp;
 
 #endif
-
-#if defined(FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_CCX_UPLOAD)
-
-typedef struct sSirTsmIE
-{
-    tANI_U8      tsid;
-    tANI_U8      state;
-    tANI_U16     msmt_interval;
-} tSirTsmIE, *tpSirTsmIE;
-
-typedef struct sSirSmeTsmIEInd
-{
-    tSirTsmIE tsmIe;
-    tANI_U8   sessionId;
-} tSirSmeTsmIEInd, *tpSirSmeTsmIEInd;
-
-
-typedef struct sAniTrafStrmMetrics
-{
-    tANI_U16      UplinkPktQueueDly;
-    tANI_U16      UplinkPktQueueDlyHist[4];
-    tANI_U32      UplinkPktTxDly;
-    tANI_U16      UplinkPktLoss;
-    tANI_U16      UplinkPktCount;
-    tANI_U8       RoamingCount;
-    tANI_U16      RoamingDly;
-} tAniTrafStrmMetrics, *tpAniTrafStrmMetrics;
-
-typedef struct sAniGetTsmStatsReq
-{
-    // Common for all types are requests
-    tANI_U16       msgType;            // message type is same as the request type
-    tANI_U16       msgLen;             // length of the entire request
-    tANI_U8        staId;
-    tANI_U8        tid;                // traffic id
-    tSirMacAddr    bssId;
-    void           *tsmStatsCallback;
-    void           *pDevContext;       //device context
-    void           *pVosContext;       //voss context
-} tAniGetTsmStatsReq, *tpAniGetTsmStatsReq;
-
-typedef struct sAniGetTsmStatsRsp
-{
-    // Common for all types are responses
-    tANI_U16            msgType;      // message type is same as the request type
-    tANI_U16            msgLen;       // length of the entire request, includes the pStatsBuf length too
-    tANI_U8             sessionId;
-    tANI_U32            rc;           //success/failure
-    tANI_U32            staId;        // Per STA stats request must contain valid
-    tAniTrafStrmMetrics tsmMetrics;
-    void               *tsmStatsReq; //tsm stats request backup
-} tAniGetTsmStatsRsp, *tpAniGetTsmStatsRsp;
-#endif /* FEATURE_WLAN_CCX || FEATURE_WLAN_CCX_UPLOAD */
-
 /* Change country code request MSG structure */
 typedef struct sAniChangeCountryCodeReq
 {
@@ -2459,50 +2418,6 @@ typedef __ani_attr_pre_packed struct sSirTclasInfo
     }__ani_attr_packed tclasParams;
 } __ani_attr_packed tSirTclasInfo;
 
-
-#if defined(FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_CCX_UPLOAD)
-#define TSRS_11AG_RATE_6MBPS   0xC
-#define TSRS_11B_RATE_5_5MBPS  0xB
-
-typedef struct sSirMacCCXTSRSIE
-{
-    tANI_U8      tsid;
-    tANI_U8      rates[8];
-} tSirMacCCXTSRSIE;
-
-typedef struct sSirMacCCXTSMIE
-{
-    tANI_U8      tsid;
-    tANI_U8      state;
-    tANI_U16     msmt_interval;
-} tSirMacCCXTSMIE;
-
-typedef struct sTSMStats
-{
-    tANI_U8           tid;
-    tSirMacAddr       bssId;
-    tTrafStrmMetrics  tsmMetrics;
-} tTSMStats, *tpTSMStats;
-
-typedef struct sCcxTSMContext
-{
-   tANI_U8           tid;
-   tSirMacCCXTSMIE   tsmInfo;
-   tTrafStrmMetrics  tsmMetrics;
-} tCcxTSMContext, *tpCcxTSMContext;
-
-typedef struct sCcxPEContext
-{
-#if defined(FEATURE_WLAN_CCX) && !defined(FEATURE_WLAN_CCX_UPLOAD)
-   tCcxMeasReq       curMeasReq;
-#endif
-   tCcxTSMContext    tsm;
-} tCcxPEContext, *tpCcxPEContext;
-
-
-#endif /* FEATURE_WLAN_CCX && FEATURE_WLAN_CCX_UPLOAD */
-
-
 typedef struct sSirAddtsReqInfo
 {
     tANI_U8               dialogToken;
@@ -2511,7 +2426,7 @@ typedef struct sSirAddtsReqInfo
     tANI_U8               numTclas; // number of Tclas elements
     tSirTclasInfo    tclasInfo[SIR_MAC_TCLASIE_MAXNUM];
     tANI_U8               tclasProc;
-#if defined(FEATURE_WLAN_CCX)
+#ifdef FEATURE_WLAN_CCX
     tSirMacCCXTSRSIE      tsrsIE;
     tANI_U8               tsrsPresent:1;
 #endif
@@ -2532,7 +2447,7 @@ typedef struct sSirAddtsRspInfo
     tSirTclasInfo      tclasInfo[SIR_MAC_TCLASIE_MAXNUM];
     tANI_U8                 tclasProc;
     tSirMacScheduleIE  schedule;
-#if defined(FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_CCX_UPLOAD)
+#ifdef FEATURE_WLAN_CCX
     tSirMacCCXTSMIE    tsmIE;
     tANI_U8                 tsmPresent:1;
 #endif
@@ -3389,17 +3304,6 @@ typedef struct sSirUpdateAPWPARSNIEsReq
     tSirRSNie      APWPARSNIEs;
 } tSirUpdateAPWPARSNIEsReq, *tpSirUpdateAPWPARSNIEsReq;
 
-#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
-#define SIR_ROAM_MAX_CHANNELS            NUM_RF_CHANNELS
-#define SIR_ROAM_SCAN_MAX_PB_REQ_SIZE    450
-#define CHANNEL_LIST_STATIC                   1 /* Occupied channel list remains static */
-#define CHANNEL_LIST_DYNAMIC_INIT             2 /* Occupied channel list can be learnt after init */
-#define CHANNEL_LIST_DYNAMIC_FLUSH            3 /* Occupied channel list can be learnt after flush */
-#define CHANNEL_LIST_DYNAMIC_UPDATE           4 /* Occupied channel list can be learnt after update */
-#define SIR_ROAM_SCAN_24G_DEFAULT_CH     1
-#define SIR_ROAM_SCAN_5G_DEFAULT_CH      36
-#define SIR_ROAM_SCAN_RESERVED_BYTES     61
-#endif //WLAN_FEATURE_ROAM_SCAN_OFFLOAD
 
 // SME -> HAL - This is the host offload request. 
 #define SIR_IPV4_ARP_REPLY_OFFLOAD                  0
@@ -3585,6 +3489,18 @@ typedef struct sSirWlanSetRxpFilters
 #define SIR_PNO_24G_DEFAULT_CH     1
 #define SIR_PNO_5G_DEFAULT_CH      36
 
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+#define SIR_ROAM_MAX_CHANNELS            NUM_RF_CHANNELS
+#define SIR_ROAM_SCAN_MAX_PB_REQ_SIZE    450
+#define CHANNEL_LIST_STATIC                   1 /* Occupied channel list remains static */
+#define CHANNEL_LIST_DYNAMIC_INIT             2 /* Occupied channel list can be learnt after init */
+#define CHANNEL_LIST_DYNAMIC_FLUSH            3 /* Occupied channel list can be learnt after flush */
+#define CHANNEL_LIST_DYNAMIC_UPDATE           4 /* Occupied channel list can be learnt after update */
+#define SIR_ROAM_SCAN_24G_DEFAULT_CH     1
+#define SIR_ROAM_SCAN_5G_DEFAULT_CH      36
+#define SIR_ROAM_SCAN_RESERVED_BYTES     61
+#endif
+
 typedef enum
 {
    SIR_PNO_MODE_IMMEDIATE,
@@ -3631,43 +3547,6 @@ typedef struct sSirPNOScanReq
   tANI_U8   p5GProbeTemplate[SIR_PNO_MAX_PB_REQ_SIZE]; 
 } tSirPNOScanReq, *tpSirPNOScanReq;
 
-typedef struct sSirSetRSSIFilterReq
-{
-  tANI_U8     rssiThreshold;
-} tSirSetRSSIFilterReq, *tpSirSetRSSIFilterReq;
-
-
-// Update Scan Params
-typedef struct {
-  tANI_U8   b11dEnabled;
-  tANI_U8   b11dResolved;
-  tANI_U8   ucChannelCount;
-  tANI_U8   aChannels[SIR_PNO_MAX_NETW_CHANNELS_EX];
-  tANI_U16  usPassiveMinChTime;
-  tANI_U16  usPassiveMaxChTime;
-  tANI_U16  usActiveMinChTime;
-  tANI_U16  usActiveMaxChTime;
-  tANI_U8   ucCBState;
-} tSirUpdateScanParams, * tpSirUpdateScanParams;
-
-// Preferred Network Found Indication
-typedef struct
-{
-  tANI_U16      mesgType;
-  tANI_U16      mesgLen;
-  /* Network that was found with the highest RSSI*/
-  tSirMacSSid   ssId;
-  /* Indicates the RSSI */
-  tANI_U8       rssi;
-  /* Length of the beacon or probe response
-   * corresponding to the candidate found by PNO */
-  tANI_U32      frameLength;
-  /* Index to memory location where the contents of
-   * beacon or probe response frame will be copied */
-  tANI_U8       data[1];
-} tSirPrefNetworkFoundInd, *tpSirPrefNetworkFoundInd;
-#endif //FEATURE_WLAN_SCAN_PNO
-
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
 typedef struct
 {
@@ -3690,7 +3569,6 @@ typedef struct SirMobilityDomainInfo
 typedef struct sSirRoamOffloadScanReq
 {
   eAniBoolean RoamScanOffloadEnabled;
-  eAniBoolean MAWCEnabled;
   tANI_S8     LookupThreshold;
   tANI_U8     RoamRssiDiff;
   tANI_U8     ChannelCacheType;
@@ -3723,7 +3601,44 @@ typedef struct sSirRoamOffloadScanReq
   tSirRoamNetworkType ConnectedNetwork;
   tSirMobilityDomainInfo MDID;
 } tSirRoamOffloadScanReq, *tpSirRoamOffloadScanReq;
-#endif //WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+#endif
+
+typedef struct sSirSetRSSIFilterReq
+{
+  tANI_U8     rssiThreshold;
+} tSirSetRSSIFilterReq, *tpSirSetRSSIFilterReq;
+
+
+// Update Scan Params 
+typedef struct {
+  tANI_U8   b11dEnabled; 
+  tANI_U8   b11dResolved;
+  tANI_U8   ucChannelCount; 
+  tANI_U8   aChannels[SIR_PNO_MAX_NETW_CHANNELS_EX]; 
+  tANI_U16  usPassiveMinChTime; 
+  tANI_U16  usPassiveMaxChTime; 
+  tANI_U16  usActiveMinChTime; 
+  tANI_U16  usActiveMaxChTime; 
+  tANI_U8   ucCBState; 
+} tSirUpdateScanParams, * tpSirUpdateScanParams;
+
+// Preferred Network Found Indication
+typedef struct
+{  
+  tANI_U16      mesgType;
+  tANI_U16      mesgLen;
+  /* Network that was found with the highest RSSI*/
+  tSirMacSSid   ssId;
+  /* Indicates the RSSI */
+  tANI_U8       rssi;
+  /* Length of the beacon or probe response
+   * corresponding to the candidate found by PNO */
+  tANI_U32      frameLength;
+  /* Index to memory location where the contents of
+   * beacon or probe response frame will be copied */
+  tANI_U8       data[1];
+} tSirPrefNetworkFoundInd, *tpSirPrefNetworkFoundInd;
+#endif // FEATURE_WLAN_SCAN_PNO
 
 #define SIR_NOCHANGE_POWER_VALUE  0xFFFFFFFF
 
@@ -4086,16 +4001,6 @@ typedef struct sSirTdlsDelAllPeerInd
    tANI_U16               length;
    tANI_U8                sessionId;     // Session ID
 } tSirTdlsDelAllPeerInd, *tpSirTdlsDelAllPeerInd;
-#ifdef FEATURE_WLAN_TDLS_OXYGEN_DISAPPEAR_AP
-typedef struct sSirTdlsDisappearAPInd
-{
-   tANI_U16               messageType;
-   tANI_U16               length;
-   tANI_U8                sessionId;     // Session ID
-   tANI_U16               staId;
-   tSirMacAddr            staAddr;
-} tSirTdlsDisappearAPInd, *tpSirTdlsDisappearAPInd;
-#endif
 typedef struct sSirMgmtTxCompletionInd
 {
    tANI_U16               messageType;
@@ -4402,6 +4307,8 @@ typedef struct sSirLPHBTcpParamStruct
    v_U16_t      timeout;
    v_U8_t       session;
    tSirMacAddr  gateway_mac;
+   uint16       timePeriodSec; // in seconds
+   uint32       tcpSn;
 } tSirLPHBTcpParamStruct;
 
 typedef struct sSirLPHBTcpFilterStruct
@@ -4446,12 +4353,12 @@ typedef struct sSirLPHBReq
    } params;
 } tSirLPHBReq;
 
-typedef struct sSirLPHBTimeoutInd
+typedef struct sSirLPHBInd
 {
    v_U8_t sessionIdx;
    v_U8_t protocolType; /*TCP or UDP*/
    v_U8_t eventReason;
-} tSirLPHBTimeoutInd;
+} tSirLPHBInd;
 #endif /* FEATURE_WLAN_LPHB */
 
 typedef struct sSirAddPeriodicTxPtrn

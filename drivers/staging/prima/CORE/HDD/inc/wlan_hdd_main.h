@@ -115,6 +115,7 @@
 #define WLAN_WAIT_TIME_DISCONNECT  500
 #define WLAN_WAIT_TIME_STATS       800
 #define WLAN_WAIT_TIME_POWER       800
+#define WLAN_WAIT_TIME_COUNTRY     1000
 /* Amount of time to wait for sme close session callback.
    This value should be larger than the timeout used by WDI to wait for
    a response from WCNSS */
@@ -135,8 +136,9 @@
 
 /** Maximum time(ms) to wait for tdls initiator to start direct communication **/
 #define WAIT_TIME_TDLS_INITIATOR    600
-/* Maximum time to get crda entry settings */
-#define CRDA_WAIT_TIME 300
+
+/* Maximum time to get linux regulatory entry settings */
+#define LINUX_REG_WAIT_TIME 300
 
 /* Scan Req Timeout */
 #define WLAN_WAIT_TIME_SCAN_REQ 100
@@ -171,12 +173,13 @@
 #define WLAN_HDD_IS_SOCIAL_CHANNEL(center_freq) \
 (((center_freq) == 2412) || ((center_freq) == 2437) || ((center_freq) == 2462))
 
-#ifdef WLAN_FEATURE_11W
-#define WLAN_HDD_SA_QUERY_ACTION_FRAME 8
-#endif
 #define WLAN_HDD_CHANNEL_IN_UNII_1_BAND(center_freq) \
 (((center_freq) == 5180 ) || ((center_freq) == 5200) \
 || ((center_freq) == 5220) || ((center_freq) == 5240))
+
+#ifdef WLAN_FEATURE_11W
+#define WLAN_HDD_SA_QUERY_ACTION_FRAME 8
+#endif
 
 #define WLAN_HDD_PUBLIC_ACTION_TDLS_DISC_RESP 14
 #define WLAN_HDD_TDLS_ACTION_FRAME 12
@@ -205,15 +208,6 @@
 #define HDD_MAC_ADDR_LEN    6
 #define HDD_ROAM_SCAN_CHANNEL_SWITCH_TIME 3
 typedef v_U8_t tWlanHddMacAddr[HDD_MAC_ADDR_LEN];
-
-struct statsContext
-{
-   struct completion completion;
-   hdd_adapter_t *pAdapter;
-   unsigned int magic;
-};
-
-#define STATS_CONTEXT_MAGIC 0x53544154   //STAT
 
 typedef struct hdd_tx_rx_stats_s
 {
@@ -612,9 +606,6 @@ typedef struct {
    /**Track whether OS TX queue has been disabled.*/
    v_BOOL_t txSuspended[NUM_TX_QUEUES];
 
-   /**Track whether 3/4th of resources are used on softAP/P2P GO side. */
-   v_BOOL_t vosLowResource;
-
    /** Track QoS status of station */
    v_BOOL_t isQosEnabled;
 
@@ -804,9 +795,6 @@ struct hdd_adapter_s
    hdd_list_t wmm_tx_queue[NUM_TX_QUEUES];
    /**Track whether VOS is in a low resource state*/
    v_BOOL_t isVosOutOfResource;
-
-   /**Track whether 3/4th of resources are used on STA/p2p client side */
-   v_BOOL_t isVosLowResource;
   
    /**Track whether OS TX queue has been disabled.*/
    v_BOOL_t isTxSuspended[NUM_TX_QUEUES];
@@ -855,13 +843,6 @@ struct hdd_adapter_s
    v_U32_t magic;
    v_BOOL_t higherDtimTransition;
    v_BOOL_t survey_idx;
-#if defined(FEATURE_WLAN_CCX) && defined(FEATURE_WLAN_CCX_UPLOAD)
-   tAniTrafStrmMetrics tsmStats;
-#endif
-   /* Flag to ensure PSB is configured through framework */
-   v_U8_t psbChanged;
-   /* UAPSD psb value configured through framework */
-   v_U8_t configuredPsb;
 };
 
 #define WLAN_HDD_GET_STATION_CTX_PTR(pAdapter) (&(pAdapter)->sessionCtx.station)
@@ -901,15 +882,6 @@ typedef struct
    vos_lock_t  trafficLock;
    v_TIME_t    lastFrameTs;
 }hdd_traffic_monitor_t;
-
-#ifdef FEATURE_WLAN_LPHB
-typedef struct
-{
-   v_U8_t enable;
-   v_U8_t item;
-   v_U8_t session;
-} lphbEnableStruct;
-#endif /* FEATURE_WLAN_LPHB */
 
 /** Adapter stucture definition */
 
@@ -963,8 +935,8 @@ struct hdd_context_s
    /* Completion  variable to indicate Mc Thread Suspended */
    struct completion mc_sus_event_var;
 
-   /* Completion  variable to wlan_hdd_get_crda_regd_entry  */
-   struct completion driver_crda_req;
+   /* Completion variable for regulatory hint  */
+   struct completion linux_reg_req;
 
    v_BOOL_t isWlanSuspended;
 
@@ -1067,9 +1039,6 @@ struct hdd_context_s
     v_U8_t configuredMcastBcastFilter;
 
     v_U8_t sus_res_mcastbcast_filter;
-#ifdef FEATURE_WLAN_LPHB
-    lphbEnableStruct  lphbEnableReq;
-#endif /* FEATURE_WLAN_LPHB */
 
     v_BOOL_t sus_res_mcastbcast_filter_valid;
 
@@ -1146,10 +1115,10 @@ tVOS_CON_MODE hdd_get_conparam( void );
 void wlan_hdd_enable_deepsleep(v_VOID_t * pVosContext);
 v_BOOL_t hdd_is_apps_power_collapse_allowed(hdd_context_t* pHddCtx);
 v_BOOL_t hdd_is_suspend_notify_allowed(hdd_context_t* pHddCtx);
-void hdd_abort_mac_scan(hdd_context_t *pHddCtx);
+void hdd_abort_mac_scan(hdd_context_t *pHddCtx, tANI_U8 sessionId);
 void wlan_hdd_set_monitor_tx_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter );
 void hdd_cleanup_actionframe( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter );
-v_BOOL_t is_crda_regulatory_entry_valid(void);
+
 void crda_regulatory_entry_default(v_U8_t *countryCode, int domain_id);
 void wlan_hdd_set_concurrency_mode(hdd_context_t *pHddCtx, tVOS_CON_MODE mode);
 void wlan_hdd_clear_concurrency_mode(hdd_context_t *pHddCtx, tVOS_CON_MODE mode);
@@ -1170,9 +1139,7 @@ void hdd_set_pwrparams(hdd_context_t *pHddCtx);
 void hdd_reset_pwrparams(hdd_context_t *pHddCtx);
 int wlan_hdd_validate_context(hdd_context_t *pHddCtx);
 VOS_STATUS hdd_issta_p2p_clientconnected(hdd_context_t *pHddCtx);
-v_BOOL_t hdd_is_valid_mac_address(const tANI_U8* pMacAddr);
 #ifdef WLAN_FEATURE_PACKET_FILTERING
 int wlan_hdd_setIPv6Filter(hdd_context_t *pHddCtx, tANI_U8 filterType, tANI_U8 sessionId);
 #endif
-int hdd_wmmps_helper(hdd_adapter_t *pAdapter, tANI_U8 *ptr);
 #endif    // end #if !defined( WLAN_HDD_MAIN_H )

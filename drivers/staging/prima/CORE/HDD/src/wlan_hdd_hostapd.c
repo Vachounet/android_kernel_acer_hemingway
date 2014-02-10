@@ -106,6 +106,12 @@
  */
 #define WE_SAP_MAX_STA_INFO 0x7FF
 
+struct statsContext
+{
+   struct completion completion;
+   hdd_adapter_t *pAdapter;
+   unsigned int magic;
+};
 #define SAP_24GHZ_CH_COUNT (14) 
 
 #define SAP_MAX_GET_ASSOC_STAS_TIMEOUT    500
@@ -1179,7 +1185,7 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
             // Lets do abort scan to ensure smooth authentication for client
             if ((pScanInfo != NULL) && pScanInfo->mScanPending)
             {
-                hdd_abort_mac_scan(pHddCtx);
+                hdd_abort_mac_scan(pHddCtx, pHostapdAdapter->sessionId);
             }
 
             break;
@@ -1601,8 +1607,7 @@ static int hdd_hostapd_set_mc_rate_update
         stasLoop < sapEvent->sapevt.sapAssocStaListEvent.noOfAssocSta;
         stasLoop++)
    {
-      vos_mem_zero((v_U8_t *)legacyRates,
-                   SAP_LEGACY_RATE_COUNT * sizeof(legacyRates));
+      vos_mem_zero((v_U8_t *)legacyRates, sizeof(legacyRates));
       rateArrayOrder = 0;
       mcsTable11n    = 0;
       supportedChannelCount = 0;
@@ -3115,18 +3120,6 @@ static int iw_get_ap_freq(struct net_device *dev, struct iw_request_info *info,
    return 0;
 }
 
-static int iw_get_mode(struct net_device *dev,
-        struct iw_request_info *info,
-        union iwreq_data *wrqu,
-        char *extra)
-{
-    int status = 0;
-
-    wrqu->mode = IW_MODE_MASTER;
-
-    return status;
-}
-
 static int iw_softap_setwpsie(struct net_device *dev,
         struct iw_request_info *info,
         union iwreq_data *wrqu, 
@@ -3647,10 +3640,10 @@ int iw_get_softap_linkspeed(struct net_device *dev,
       hddLog(VOS_TRACE_LEVEL_ERROR, FL("String to Hex conversion Failed"));
    }
 
-   /* If no mac address is passed and/or its length is less than 17,
+   /* If no mac address is passed and/or its length is less than 18,
     * link speed for first connected client will be returned.
     */
-   if (!VOS_IS_STATUS_SUCCESS(status ) || wrqu->data.length < 17)
+   if (!VOS_IS_STATUS_SUCCESS(status ) || wrqu->data.length < 18)
    {
       status = hdd_softap_GetConnectedStaId(pHostapdAdapter, (void *)(&staId));
    }
@@ -3713,7 +3706,7 @@ static const iw_handler      hostapd_handler[] =
    (iw_handler) NULL,           /* SIOCSIWFREQ */
    (iw_handler) iw_get_ap_freq,    /* SIOCGIWFREQ */
    (iw_handler) NULL,           /* SIOCSIWMODE */
-   (iw_handler) iw_get_mode,    /* SIOCGIWMODE */
+   (iw_handler) NULL,           /* SIOCGIWMODE */
    (iw_handler) NULL,           /* SIOCSIWSENS */
    (iw_handler) NULL,           /* SIOCGIWSENS */
    (iw_handler) NULL,           /* SIOCSIWRANGE */

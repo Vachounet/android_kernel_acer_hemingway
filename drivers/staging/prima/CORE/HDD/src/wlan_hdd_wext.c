@@ -131,6 +131,13 @@ int hdd_setBand_helper(struct net_device *dev, tANI_U8* ptr);
 static int ioctl_debug;
 module_param(ioctl_debug, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
+struct statsContext
+{
+   struct completion completion;
+   hdd_adapter_t *pAdapter;
+   unsigned int magic;
+};
+
 #define STATS_CONTEXT_MAGIC 0x53544154   //STAT
 #define RSSI_CONTEXT_MAGIC  0x52535349   //RSSI
 #define POWER_CONTEXT_MAGIC 0x504F5752   //POWR
@@ -1213,15 +1220,14 @@ static int iw_set_mode(struct net_device *dev,
     }
 
     if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress) {
-       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
-                 "%s:LOGP in Progress. Ignore!!!", __func__);
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, "%s:LOGP in Progress. Ignore!!!",__func__);
        return 0;
     }
 
     pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
     if (pWextState == NULL)
     {
-        hddLog(LOGE, "%s ERROR: Data Storage Corruption", __func__);
+        hddLog (LOGE, "%s ERROR: Data Storage Corruption", __func__);
         return -EINVAL;
     }
 
@@ -1229,12 +1235,12 @@ static int iw_set_mode(struct net_device *dev,
     pRoamProfile = &pWextState->roamProfile;
     LastBSSType = pRoamProfile->BSSType;
 
-    hddLog(LOG1, "%s Old Bss type = %d", __func__, LastBSSType);
+    hddLog( LOG1,"%s Old Bss type = %d", __func__, LastBSSType);
 
     switch (wrqu->mode)
     {
     case IW_MODE_ADHOC:
-        hddLog(LOG1, "%s Setting AP Mode as IW_MODE_ADHOC", __func__);
+        hddLog( LOG1,"%s Setting AP Mode as IW_MODE_ADHOC", __func__);
         pRoamProfile->BSSType = eCSR_BSS_TYPE_START_IBSS;
         // Set the phymode correctly for IBSS.
         pConfig  = (WLAN_HDD_GET_CTX(pAdapter))->cfg_ini;
@@ -1243,16 +1249,16 @@ static int iw_set_mode(struct net_device *dev,
         wdev->iftype = NL80211_IFTYPE_ADHOC;
         break;
     case IW_MODE_INFRA:
-        hddLog(LOG1, "%s Setting AP Mode as IW_MODE_INFRA", __func__);
+        hddLog( LOG1, "%s Setting AP Mode as IW_MODE_INFRA", __func__);
         pRoamProfile->BSSType = eCSR_BSS_TYPE_INFRASTRUCTURE;
         wdev->iftype = NL80211_IFTYPE_STATION;
         break;
     case IW_MODE_AUTO:
-        hddLog(LOG1, "%s Setting AP Mode as IW_MODE_AUTO", __func__);
+        hddLog(LOG1,"%s Setting AP Mode as IW_MODE_AUTO", __func__);
         pRoamProfile->BSSType = eCSR_BSS_TYPE_ANY;
         break;
     default:
-        hddLog(LOG1, "%s Unknown AP Mode value", __func__);
+        hddLog(LOG1,"%s Unknown AP Mode value", __func__);
         return -EOPNOTSUPP;
     }
 
@@ -1275,6 +1281,8 @@ static int iw_set_mode(struct net_device *dev,
         }
     }
 
+
+
     EXIT();
     return 0;
 }
@@ -1282,14 +1290,13 @@ static int iw_set_mode(struct net_device *dev,
 
 static int iw_get_mode(struct net_device *dev,
                              struct iw_request_info *info,
-                             union iwreq_data *wrqu,
-                             char *extra)
+                             v_U32_t *uwrq, char *extra)
 {
 
     hdd_wext_state_t *pWextState;
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
 
-    hddLog(LOG1, "In %s", __func__);
+    hddLog (LOG1, "In %s",__func__);
 
     if (NULL == pAdapter)
     {
@@ -1299,15 +1306,14 @@ static int iw_get_mode(struct net_device *dev,
     }
 
     if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress) {
-       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
-                 "%s:LOGP in Progress. Ignore!!!", __func__);
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, "%s:LOGP in Progress. Ignore!!!",__func__);
        return 0;
     }
 
     pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
     if (pWextState == NULL)
     {
-        hddLog(LOGE, "%s ERROR: Data Storage Corruption", __func__);
+        hddLog (LOGE, "%s ERROR: Data Storage Corruption", __func__);
         return -EINVAL;
     }
 
@@ -1315,22 +1321,21 @@ static int iw_get_mode(struct net_device *dev,
     {
     case eCSR_BSS_TYPE_INFRASTRUCTURE:
         hddLog(LOG1, "%s returns IW_MODE_INFRA\n", __func__);
-        wrqu->mode = IW_MODE_INFRA;
+        *uwrq = IW_MODE_INFRA ;
         break;
     case eCSR_BSS_TYPE_IBSS:
     case eCSR_BSS_TYPE_START_IBSS:
-        hddLog(LOG1, "%s returns IW_MODE_ADHOC\n", __func__);
-        wrqu->mode = IW_MODE_ADHOC;
+        hddLog( LOG1,"%s returns IW_MODE_ADHOC\n", __func__);
+        *uwrq= IW_MODE_ADHOC;
         break;
     case eCSR_BSS_TYPE_ANY:
-        hddLog(LOG1, "%s returns IW_MODE_AUTO\n", __func__);
-        wrqu->mode = IW_MODE_AUTO;
+        hddLog( LOG1,"%s returns IW_MODE_AUTO\n", __func__);
+        *uwrq= IW_MODE_AUTO;
         break;
     default:
-        hddLog(LOG1, "%s returns APMODE_UNKNOWN\n", __func__);
+        hddLog( LOG1,"%s returns APMODE_UNKNOWN\n", __func__);
         break;
     }
-
     return 0;
 }
 
@@ -2921,25 +2926,9 @@ static int iw_set_priv(struct net_device *dev,
     }
     else if( strncasecmp(cmd, "powermode", 9) == 0 ) {
         int mode;
-        char *ptr;
+        char *ptr = (char*)(cmd + 9);
 
-        if (9 < cmd_len)
-        {
-            ptr = (char*)(cmd + 9);
-
-        }else{
-              VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                        "CMD LENGTH %d is not correct",cmd_len);
-              return VOS_STATUS_E_FAILURE;
-        }
-
-        if (1 != sscanf(ptr,"%d",&mode))
-        {
-            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                      "powermode input %s is not correct",ptr);
-            return VOS_STATUS_E_FAILURE;
-        }
-
+        sscanf(ptr,"%d",&mode);
         wlan_hdd_enter_bmps(pAdapter, mode);
         /*TODO:Set the power mode*/
     }
@@ -3021,27 +3010,9 @@ static int iw_set_priv(struct net_device *dev,
     }
     else if( 0 == strncasecmp(cmd, "CONFIG-TX-TRACKING", 18) ) {
         tSirTxPerTrackingParam tTxPerTrackingParam;
-        char *ptr;
-
-        if (18 < cmd_len)
-        {
-           ptr = (char*)(cmd + 18);
-        }else{
-               VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                         "CMD LENGTH %d is not correct",cmd_len);
-               return VOS_STATUS_E_FAILURE;
-        }
-
-        if (4 != sscanf(ptr,"%hhu %hhu %hhu %lu",
-                        &(tTxPerTrackingParam.ucTxPerTrackingEnable),
-                        &(tTxPerTrackingParam.ucTxPerTrackingPeriod),
-                        &(tTxPerTrackingParam.ucTxPerTrackingRatio),
-                        &(tTxPerTrackingParam.uTxPerTrackingWatermark)))
-        {
-            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                      "CONFIG-TX-TRACKING %s input is not correct",ptr);
-                      return VOS_STATUS_E_FAILURE;
-        }
+        char *ptr = (char*)(cmd + 18);
+        sscanf(ptr,"%hhu %hhu %hhu %lu",&(tTxPerTrackingParam.ucTxPerTrackingEnable), &(tTxPerTrackingParam.ucTxPerTrackingPeriod),
+               &(tTxPerTrackingParam.ucTxPerTrackingRatio), &(tTxPerTrackingParam.uTxPerTrackingWatermark));
 
         // parameters checking
         // period has to be larger than 0
@@ -3745,8 +3716,6 @@ static int iw_setint_getnone(struct net_device *dev, struct iw_request_info *inf
         case WE_SET_11D_STATE:
         {
             tSmeConfigParams smeConfig;
-            memset(&smeConfig, 0x00, sizeof(smeConfig));
-
             if((ENABLE_11D == set_value) || (DISABLE_11D == set_value)) {
 
                 sme_GetConfigParam(hHal,&smeConfig);
@@ -4587,24 +4556,22 @@ static int iw_get_char_setnone(struct net_device *dev, struct iw_request_info *i
 
             /**
              * Maximum channels = WNI_CFG_VALID_CHANNEL_LIST_LEN. Maximum buffer
-             * needed = 5 * number of channels. Check if sufficient buffer is available and
-             * then proceed to fill the buffer.
+             * needed = 5 * number of channels. Check ifsufficient
+             * buffer is available and then proceed to fill the buffer.
              */
             if(WE_MAX_STR_LEN < (5 * WNI_CFG_VALID_CHANNEL_LIST_LEN))
             {
                 hddLog(VOS_TRACE_LEVEL_ERROR,
-                     "%s Insufficient Buffer to populate channel list\n",
-                      __func__);
+                        "%s Insufficient Buffer to populate channel list\n",
+                            __func__);
                 return -EINVAL;
             }
             len = scnprintf(buf, WE_MAX_STR_LEN, "%u ",
-                     channel_list.num_channels);
-            buf += len;
+                    channel_list.num_channels);
             for(i = 0 ; i < channel_list.num_channels; i++)
             {
-                len = scnprintf(buf, WE_MAX_STR_LEN,
+                len += scnprintf(buf + len, WE_MAX_STR_LEN - len,
                                "%u ", channel_list.channels[i]);
-                buf += len;
             }
             wrqu->data.length = strlen(extra)+1;
 
@@ -4635,36 +4602,6 @@ static int iw_get_char_setnone(struct net_device *dev, struct iw_request_info *i
            wrqu->data.length = strlen(extra)+1;
            break;
        }
-#endif
-#ifdef FEATURE_CESIUM_PROPRIETARY
-        case WE_GET_IBSS_STA_INFO:
-        {
-            hdd_station_ctx_t *pHddStaCtx =
-                WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
-            int idx = 0;
-            int length = 0;
-
-            for (idx = 0; idx < HDD_MAX_NUM_IBSS_STA; idx++)
-            {
-               if (0 != pHddStaCtx->conn_info.staId[ idx ])
-               {
-                   length += scnprintf
-                             (
-                             (extra + length), WE_MAX_STR_LEN - length,
-                             "%d .%02x:%02x:%02x:%02x:%02x:%02x\n",
-                             pHddStaCtx->conn_info.staId[ idx ],
-                             pHddStaCtx->conn_info.peerMacAddress[idx].bytes[0],
-                             pHddStaCtx->conn_info.peerMacAddress[idx].bytes[1],
-                             pHddStaCtx->conn_info.peerMacAddress[idx].bytes[2],
-                             pHddStaCtx->conn_info.peerMacAddress[idx].bytes[3],
-                             pHddStaCtx->conn_info.peerMacAddress[idx].bytes[4],
-                             pHddStaCtx->conn_info.peerMacAddress[idx].bytes[5]
-                             );
-               }
-            }
-            wrqu->data.length = strlen(extra)+1;
-            break;
-        }
 #endif
         default:
         {
@@ -5097,15 +5034,6 @@ static int iw_add_tspec(struct net_device *dev, struct iw_request_info *info,
       return 0;
    }
    tSpec.ts_info.up = params[HDD_WLAN_WMM_PARAM_USER_PRIORITY];
-   if(0 > tSpec.ts_info.up || SME_QOS_WMM_UP_MAX < tSpec.ts_info.up)
-   {
-   hddLog(VOS_TRACE_LEVEL_ERROR,"***ts_info.up out of bounds***");
-   return 0;
-   }
-
-   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
-             "%s:TS_INFO PSB %d UP %d !!!", __func__,
-             tSpec.ts_info.psb, tSpec.ts_info.up);
 
    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
              "%s:TS_INFO PSB %d UP %d !!!", __func__,
@@ -6203,7 +6131,6 @@ void wlan_hdd_set_mc_addr_list(hdd_adapter_t *pAdapter, v_U8_t set)
 
         }
         pAdapter->mc_addr_list.isFilterApplied = set ? TRUE : FALSE;
-        vos_mem_free(pMulticastAddrs);
     }
     else
     {
@@ -6774,7 +6701,7 @@ int hdd_setBand_helper(struct net_device *dev, tANI_U8* ptr)
          (band == eCSR_BAND_5G && pHddCtx->cfg_ini->nBandCapability==1) ||
          (band == eCSR_BAND_ALL && pHddCtx->cfg_ini->nBandCapability!=0))
     {
-         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
              "%s: band value %u violate INI settings %u", __func__,
              band, pHddCtx->cfg_ini->nBandCapability);
          return -EIO;
@@ -6838,7 +6765,7 @@ int hdd_setBand_helper(struct net_device *dev, tANI_U8* ptr)
              }
         }
 
-        hdd_abort_mac_scan(pHddCtx);
+        hdd_abort_mac_scan(pHddCtx, pAdapter->sessionId);
         sme_ScanFlushResult(hHal, pAdapter->sessionId);
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
         sme_UpdateBgScanConfigIniChannelList(hHal, (eCsrBand) band);

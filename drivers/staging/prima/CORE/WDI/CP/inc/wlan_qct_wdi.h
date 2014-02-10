@@ -397,8 +397,8 @@ typedef enum
   /* TDLS_Indication */
   WDI_TDLS_IND,
 
-  /* LPHB Timeout Indication from FW to umac */
-  WDI_LPHB_WAIT_TIMEOUT_IND,
+  /* LPHB Indication from FW to umac */
+  WDI_LPHB_IND,
 
   /* IBSS Peer Inactivity Indication */
   WDI_IBSS_PEER_INACTIVITY_IND,
@@ -4394,6 +4394,8 @@ typedef struct
    wpt_uint16 timeout;
    wpt_uint8  session;
    wpt_uint8  gateway_mac[WDI_MAC_ADDR_LEN];
+   wpt_uint16 timePeriodSec; // in seconds
+   wpt_uint32 tcpSn;
 } WDI_LPHBTcpParamStruct;
 
 typedef struct
@@ -4439,6 +4441,28 @@ typedef struct
 } WDI_LPHBReq;
 #endif /* FEATURE_WLAN_LPHB */
 
+#ifdef FEATURE_WLAN_SCAN_PNO
+
+/*Max number of channels for a given network supported by PNO*/
+#define WDI_PNO_MAX_NETW_CHANNELS  26
+
+/*Max number of channels for a given network supported by PNO*/
+#define WDI_PNO_MAX_NETW_CHANNELS_EX  60
+
+/*The max number of programable networks for PNO*/
+#define WDI_PNO_MAX_SUPP_NETWORKS  16
+
+/*The max number of scan timers programable in Riva*/
+#define WDI_PNO_MAX_SCAN_TIMERS    10
+
+#define WDI_PNO_MAX_PROBE_SIZE    450
+
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+#define WDI_ROAM_SCAN_MAX_CHANNELS       80 /* NUM_RF_CHANNELS */
+#define WDI_ROAM_SCAN_MAX_PROBE_SIZE     450
+#define WDI_ROAM_SCAN_RESERVED_BYTES     61
+#endif
+
 /*---------------------------------------------------------------------------
   WDI_AuthType
 ---------------------------------------------------------------------------*/
@@ -4480,21 +4504,6 @@ typedef enum
     WDI_ED_MAX = 0xFFFFFFFF /*expanding the type to UINT32*/
 } WDI_EdType;
 
-#ifdef FEATURE_WLAN_SCAN_PNO
-
-/*Max number of channels for a given network supported by PNO*/
-#define WDI_PNO_MAX_NETW_CHANNELS  26
-
-/*Max number of channels for a given network supported by PNO*/
-#define WDI_PNO_MAX_NETW_CHANNELS_EX  60
-
-/*The max number of programable networks for PNO*/
-#define WDI_PNO_MAX_SUPP_NETWORKS  16
-
-/*The max number of scan timers programable in Riva*/
-#define WDI_PNO_MAX_SCAN_TIMERS    10
-
-#define WDI_PNO_MAX_PROBE_SIZE    450
 
 /*---------------------------------------------------------------------------
   WDI_PNOMode
@@ -4620,79 +4629,7 @@ typedef struct
    void*                      pUserData; 
 } WDI_PNOScanReqParamsType;
 
-/*---------------------------------------------------------------------------
-  WDI_SetRssiFilterReqParamsType
-  PNO info passed to WDI form WDA
----------------------------------------------------------------------------*/
-typedef struct
-{
-   /* RSSI Threshold */
-   wpt_uint8                  rssiThreshold;
-   /* Request status callback offered by UMAC - it is called if the current req
-   has returned PENDING as status; it delivers the status of sending the message
-   over the BUS */
-   WDI_ReqStatusCb            wdiReqStatusCB;
-   /* The user data passed in by UMAC, it will be sent back when the above
-   function pointer will be called */
-   void*                      pUserData;
-} WDI_SetRssiFilterReqParamsType;
-
-/*---------------------------------------------------------------------------
-  WDI_UpdateScanParamsInfo
----------------------------------------------------------------------------*/
-typedef struct
-{
-  /*Is 11d enabled*/
-  wpt_uint8    b11dEnabled;
-
-  /*Was UMAc able to find the regulatory domain*/
-  wpt_uint8    b11dResolved;
-
-  /*Number of channel allowed in the regulatory domain*/
-  wpt_uint8    ucChannelCount;
-
-  /*The actual channels allowed in the regulatory domain*/
-  wpt_uint8    aChannels[WDI_PNO_MAX_NETW_CHANNELS_EX];
-
-  /*Passive min channel time*/
-  wpt_uint16   usPassiveMinChTime;
-
-  /*Passive max channel time*/
-  wpt_uint16   usPassiveMaxChTime;
-
-  /*Active min channel time*/
-  wpt_uint16   usActiveMinChTime;
-
-  /*Active max channel time*/
-  wpt_uint16   usActiveMaxChTime;
-
-  /*channel bonding info*/
-  wpt_uint8    cbState;
-} WDI_UpdateScanParamsInfo;
-
-/*---------------------------------------------------------------------------
-  WDI_UpdateScanParamsInfoType
-  UpdateScanParams info passed to WDI form WDA
----------------------------------------------------------------------------*/
-typedef struct
-{
-   /* PNO Info Type, same as tUpdateScanParams */
-   WDI_UpdateScanParamsInfo   wdiUpdateScanParamsInfo;
-   /* Request status callback offered by UMAC - it is called if the current req
-   has returned PENDING as status; it delivers the status of sending the message
-   over the BUS */
-   WDI_ReqStatusCb            wdiReqStatusCB;
-   /* The user data passed in by UMAC, it will be sent back when the above
-   function pointer will be called */
-   void*                      pUserData;
-} WDI_UpdateScanParamsInfoType;
-#endif //FEATURE_WLAN_SCAN_PNO
-
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
-
-#define WDI_ROAM_SCAN_MAX_CHANNELS       80 /* NUM_RF_CHANNELS */
-#define WDI_ROAM_SCAN_MAX_PROBE_SIZE     450
-#define WDI_ROAM_SCAN_RESERVED_BYTES     61
 
 typedef struct
 {
@@ -4730,7 +4667,6 @@ typedef struct WDIMobilityDomainInfo
 typedef struct
 {
   wpt_boolean RoamScanOffloadEnabled;
-  wpt_boolean MAWCEnabled;
   wpt_uint8   LookupThreshold;
   wpt_uint8   RoamRssiDiff;
   wpt_uint8   ChannelCacheType;
@@ -4772,7 +4708,76 @@ typedef struct
    function pointer will be called */
    void*                      pUserData;
 } WDI_RoamScanOffloadReqParamsType;
-#endif //WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+
+#endif
+
+/*---------------------------------------------------------------------------
+  WDI_SetRssiFilterReqParamsType
+  PNO info passed to WDI form WDA
+---------------------------------------------------------------------------*/
+typedef struct 
+{ 
+   /* RSSI Threshold */ 
+   wpt_uint8                  rssiThreshold; 
+   /* Request status callback offered by UMAC - it is called if the current req
+   has returned PENDING as status; it delivers the status of sending the message
+   over the BUS */ 
+   WDI_ReqStatusCb            wdiReqStatusCB; 
+   /* The user data passed in by UMAC, it will be sent back when the above
+   function pointer will be called */ 
+   void*                      pUserData; 
+} WDI_SetRssiFilterReqParamsType;
+
+/*---------------------------------------------------------------------------
+  WDI_UpdateScanParamsInfo
+---------------------------------------------------------------------------*/
+typedef struct 
+{
+  /*Is 11d enabled*/
+  wpt_uint8    b11dEnabled; 
+
+  /*Was UMAc able to find the regulatory domain*/
+  wpt_uint8    b11dResolved;
+
+  /*Number of channel allowed in the regulatory domain*/
+  wpt_uint8    ucChannelCount; 
+
+  /*The actual channels allowed in the regulatory domain*/
+  wpt_uint8    aChannels[WDI_PNO_MAX_NETW_CHANNELS_EX]; 
+
+  /*Passive min channel time*/
+  wpt_uint16   usPassiveMinChTime; 
+
+  /*Passive max channel time*/
+  wpt_uint16   usPassiveMaxChTime; 
+
+  /*Active min channel time*/
+  wpt_uint16   usActiveMinChTime; 
+
+  /*Active max channel time*/
+  wpt_uint16   usActiveMaxChTime; 
+
+  /*channel bonding info*/
+  wpt_uint8    cbState; 
+} WDI_UpdateScanParamsInfo;
+
+/*---------------------------------------------------------------------------
+  WDI_UpdateScanParamsInfoType
+  UpdateScanParams info passed to WDI form WDA
+---------------------------------------------------------------------------*/
+typedef struct 
+{ 
+   /* PNO Info Type, same as tUpdateScanParams */ 
+   WDI_UpdateScanParamsInfo   wdiUpdateScanParamsInfo; 
+   /* Request status callback offered by UMAC - it is called if the current req
+   has returned PENDING as status; it delivers the status of sending the message
+   over the BUS */ 
+   WDI_ReqStatusCb            wdiReqStatusCB; 
+   /* The user data passed in by UMAC, it will be sent back when the above
+   function pointer will be called */ 
+   void*                      pUserData; 
+} WDI_UpdateScanParamsInfoType;
+#endif // FEATURE_WLAN_SCAN_PNO
 
 /*---------------------------------------------------------------------------
   WDI_UpdateScanParamsInfo
