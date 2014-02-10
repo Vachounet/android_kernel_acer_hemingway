@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -1730,62 +1730,6 @@ VOS_STATUS WDA_prepareConfigTLV(v_PVOID_t pVosContext,
    {
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
                "Failed to get value for WNI_CFG_BTC_SAP_ACTIVE_BT_LEN");
-      goto handle_failure;
-   }
-   tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct
-                           + sizeof(tHalCfg) + tlvStruct->length) ;
-
-  /* QWLAN_HAL_CFG_ASD_PROBE_INTERVAL */
-   tlvStruct->type = QWLAN_HAL_CFG_ASD_PROBE_INTERVAL  ;
-   tlvStruct->length = sizeof(tANI_U32);
-   configDataValue = (tANI_U32 *)(tlvStruct + 1);
-   if(wlan_cfgGetInt(pMac, WNI_CFG_ASD_PROBE_INTERVAL,
-                                            configDataValue ) != eSIR_SUCCESS)
-   {
-      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
-               "Failed to get value for WNI_CFG_ASD_PROBE_INTERVAL");
-      goto handle_failure;
-   }
-   tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct
-                            + sizeof(tHalCfg) + tlvStruct->length) ;
-
-   /* QWLAN_HAL_CFG_ASD_TRIGGER_THRESHOLD */
-   tlvStruct->type = QWLAN_HAL_CFG_ASD_TRIGGER_THRESHOLD  ;
-   tlvStruct->length = sizeof(tANI_U32);
-   configDataValue = (tANI_U32 *)(tlvStruct + 1);
-   if(wlan_cfgGetInt(pMac, WNI_CFG_ASD_TRIGGER_THRESHOLD,
-                                            configDataValue ) != eSIR_SUCCESS)
-   {
-      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
-               "Failed to get value for WNI_CFG_ASD_TRIGGER_THRESHOLD");
-      goto handle_failure;
-   }
-   tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct
-                            + sizeof(tHalCfg) + tlvStruct->length) ;
-
-   /* QWLAN_HAL_CFG_ASD_RTT_RSSI_HYST_THRESHOLD */
-   tlvStruct->type = QWLAN_HAL_CFG_ASD_RTT_RSSI_HYST_THRESHOLD ;
-   tlvStruct->length = sizeof(tANI_U32);
-   configDataValue = (tANI_U32 *)(tlvStruct + 1);
-   if(wlan_cfgGetInt(pMac, WNI_CFG_ASD_RTT_RSSI_HYST_THRESHOLD,
-                                            configDataValue ) != eSIR_SUCCESS)
-   {
-      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
-               "Failed to get value for WNI_CFG_ASD_RTT_RSSI_HYST_THRESHOLD");
-      goto handle_failure;
-   }
-   tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct
-                            + sizeof(tHalCfg) + tlvStruct->length) ;
-
-   /* QWLAN_HAL_CFG_BTC_CTS2S_ON_STA_DURING_SCO  */
-   tlvStruct->type = QWLAN_HAL_CFG_BTC_CTS2S_ON_STA_DURING_SCO ;
-   tlvStruct->length = sizeof(tANI_U32);
-   configDataValue = (tANI_U32 *)(tlvStruct + 1);
-   if (wlan_cfgGetInt(pMac, WNI_CFG_BTC_CTS2S_DURING_SCO,
-                                            configDataValue ) != eSIR_SUCCESS)
-   {
-      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
-               "Failed to get value for WNI_CFG_BTC_CTS2S_DURING_SCO");
       goto handle_failure;
    }
    tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct
@@ -5387,10 +5331,10 @@ VOS_STATUS WDA_ProcessGetRoamRssiReq(tWDA_CbContext *pWDA,
           VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
                            "%s: VOS MEM Alloc Failure", __func__);
           VOS_ASSERT(0);
-          vos_mem_free(pGetRoamRssiParams);
-          vos_mem_free(pWdaParams);
           return VOS_STATUS_E_NOMEM;
       }
+      vos_mem_free(pGetRoamRssiParams);
+      vos_mem_free(pWdaParams);
       pGetRoamRssiRspParams->staId = pGetRoamRssiParams->staId;
       pGetRoamRssiRspParams->rc    = eSIR_FAILURE;
       pGetRoamRssiRspParams->rssi    = 0;
@@ -10286,14 +10230,9 @@ void WDA_GTKOffloadRespCallback( WDI_GtkOffloadRspParams  *pwdiGtkOffloadRsparam
 
    VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
                                           "<------ %s " ,__func__);
-   if(NULL == pWdaParams)
-   {
-      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
-                 "%s: pWdaParams received NULL", __func__);
-      VOS_ASSERT(0);
-      return;
-   }
 
+   VOS_ASSERT(NULL != pWdaParams);
+   
    vos_mem_free(pWdaParams->wdaMsgParam) ;
    vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
    vos_mem_free(pWdaParams) ;
@@ -10423,13 +10362,8 @@ void WDA_GtkOffloadGetInfoRespCallback( WDI_GtkOffloadGetInfoRspParams *pwdiGtkO
 
    VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
                                           "<------ %s " ,__func__);
-   if(NULL == pWdaParams)
-   {
-      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
-                 "%s: pWdaParams received NULL", __func__);
-      VOS_ASSERT(0);
-      return;
-   }
+
+   VOS_ASSERT(NULL != pWdaParams);
 
    pWDA = (tWDA_CbContext *)pWdaParams->pWdaContext ;
    pGtkOffloadGetInfoReq = (tpSirGtkOffloadGetInfoRspParams)pWdaParams->wdaMsgParam;
@@ -11186,7 +11120,7 @@ VOS_STATUS WDA_TxPacket(tWDA_CbContext *pWDA,
                            pWDATxRxCompFunc pCompFunc,
                            void *pData,
                            pWDAAckFnTxComp pAckTxComp,
-                           tANI_U32 txFlag)
+                           tANI_U8 txFlag)
 {
    VOS_STATUS status = VOS_STATUS_SUCCESS ;
    tpSirMacFrameCtl pFc = (tpSirMacFrameCtl ) pData;
@@ -11394,21 +11328,6 @@ VOS_STATUS WDA_TxPacket(tWDA_CbContext *pWDA,
                           pData, frmLen);
    }
 #endif
-
-   if (VOS_IS_STATUS_SUCCESS(status))
-   {
-      if (pMac->fEnableDebugLog & 0x1)
-      {
-         if ((pFc->type == SIR_MAC_MGMT_FRAME) &&
-             (pFc->subType != SIR_MAC_MGMT_PROBE_REQ) &&
-             (pFc->subType != SIR_MAC_MGMT_PROBE_RSP))
-         {
-            VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR, "TX MGMT - Type %hu, SubType %hu",
-                       pFc->type, pFc->subType);
-         }
-      }
-   }
-
 
    return status;
 }
@@ -12771,45 +12690,6 @@ void WDA_lowLevelIndCallback(WDI_LowLevelIndType *wdiLowLevelInd,
      }
 #endif
 
-#ifdef FEATURE_WLAN_CH_AVOID
-      case WDI_CH_AVOID_IND:
-      {
-         vos_msg_t            vosMsg;
-         tSirChAvoidIndType  *chAvoidInd;
-
-         chAvoidInd =
-           (tSirChAvoidIndType *)vos_mem_malloc(sizeof(tSirChAvoidIndType));
-         if (NULL == chAvoidInd)
-         {
-            VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
-                           "%s: CH_AVOID IND buffer alloc Fail", __func__);
-            return ;
-         }
-
-         chAvoidInd->avoidRangeCount =
-              wdiLowLevelInd->wdiIndicationData.wdiChAvoidInd.avoidRangeCount;
-         wpalMemoryCopy((void *)chAvoidInd->avoidFreqRange,
-             (void *)wdiLowLevelInd->wdiIndicationData.wdiChAvoidInd.avoidFreqRange,
-             chAvoidInd->avoidRangeCount * sizeof(tSirChAvoidFreqType));
-
-         VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
-                   "%s : WDA CH avoid notification", __func__);
-
-         vosMsg.type    = eWNI_SME_CH_AVOID_IND;
-         vosMsg.bodyptr = chAvoidInd;
-         vosMsg.bodyval = 0;
-         /* Send message to SME */
-         if (VOS_STATUS_SUCCESS !=
-             vos_mq_post_message(VOS_MQ_ID_SME, (vos_msg_t*)&vosMsg))
-         {
-            VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
-                      "post eWNI_SME_CH_AVOID_IND to SME Failed");
-            vos_mem_free(chAvoidInd);
-         }
-         break;
-      }
-#endif /* FEATURE_WLAN_CH_AVOID */
-
       default:
       {
          /* TODO error */
@@ -13690,8 +13570,6 @@ VOS_STATUS WDA_ProcessRoamScanOffloadReq(tWDA_CbContext *pWDA,
        pRoamOffloadScanReqParams->ConnectedNetwork.mcencryption);
    pwdiRoamOffloadScanInfo->LookupThreshold =
            pRoamOffloadScanReqParams->LookupThreshold ;
-   pwdiRoamOffloadScanInfo->RxSensitivityThreshold =
-           pRoamOffloadScanReqParams->RxSensitivityThreshold;
    pwdiRoamOffloadScanInfo->RoamRssiDiff =
            pRoamOffloadScanReqParams->RoamRssiDiff ;
    pwdiRoamOffloadScanInfo->MAWCEnabled =

@@ -102,14 +102,6 @@
 #define CSN_WRAP_AROUND_THRESHOLD          3000 /* CSN wrap around threshold */
 
 
-const v_U8_t  WLANTL_TID_2_AC[WLAN_MAX_TID] = {   WLANTL_AC_BE,
-                                                  WLANTL_AC_BK,
-                                                  WLANTL_AC_BK,
-                                                  WLANTL_AC_BE,
-                                                  WLANTL_AC_VI,
-                                                  WLANTL_AC_VI,
-                                                  WLANTL_AC_VO,
-                                                  WLANTL_AC_VO };
 
 /*==========================================================================
 
@@ -149,7 +141,6 @@ v_VOID_t WLANTL_ReorderingAgingTimerExpierCB
    vos_pkt_t                   *pCurrent;
    vos_pkt_t                   *pNext;
    v_S15_t                      seq;
-   v_U32_t                      cIndex;
    /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
    if(NULL == timerUdata)
@@ -293,10 +284,8 @@ v_VOID_t WLANTL_ReorderingAgingTimerExpierCB
        } 
    }
 
-   cIndex = ReorderInfo->ucCIndex;
    status = WLANTL_ChainFrontPkts(fwIdx, opCode, 
                                   &vosDataBuff, ReorderInfo, NULL);
-   ReorderInfo->ucCIndex = cIndex;
    if(!VOS_IS_STATUS_SUCCESS(status))
    {
       TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"Make packet chain fail with Qed frames %d", status));
@@ -1109,8 +1098,6 @@ VOS_STATUS WLANTL_MSDUReorder
    VOS_TIMER_STATE      timerState;
    v_SIZE_t             rxFree;
    v_U64_t              ullreplayCounter = 0; /* 48-bit replay counter */
-   v_U8_t               ac;
-   v_U16_t              reorderTime;
    if((NULL == pTLCb) || (*vosDataBuff == NULL))
    {
       TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"Invalid ARG pTLCb 0x%p, vosDataBuff 0x%p",
@@ -1262,7 +1249,6 @@ VOS_STATUS WLANTL_MSDUReorder
                }
                return status;
             }
-            currentReorderInfo->ucCIndex = ucFwdIdx;
             *vosDataBuff = vosPktIdx;
          }
          break;
@@ -1617,13 +1603,10 @@ VOS_STATUS WLANTL_MSDUReorder
     *    stop the timer
     * 2) if there are packets queued and the timer is not running:
     *    start the timer
-    * 3) if timer is running and no pending frame:
-    *    stop the timer
     */
    timerState = vos_timer_getCurrentState(&currentReorderInfo->agingTimer);
    if ((VOS_TIMER_STATE_RUNNING == timerState) &&
-       ((ucCIndexOrig != currentReorderInfo->ucCIndex) ||
-        (0 == currentReorderInfo->pendingFramesCount)))
+       (ucCIndexOrig != currentReorderInfo->ucCIndex))
    {
       TLLOG4(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_LOW,"HOLE filled, Pending Frames Count %d",
                  currentReorderInfo->pendingFramesCount));
@@ -1645,19 +1628,8 @@ VOS_STATUS WLANTL_MSDUReorder
       {
          TLLOG4(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_LOW,"There is a new HOLE, Pending Frames Count %d",
                     currentReorderInfo->pendingFramesCount));
-         ac = WLANTL_TID_2_AC[ucTid];
-         if (WLANTL_AC_INVALID(ac))
-         {
-             reorderTime = WLANTL_BA_REORDERING_AGING_TIMER;
-             TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"Invalid AC %d using default reorder time %d",
-                              ac, reorderTime));
-         }
-         else
-         {
-             reorderTime = pTLCb->tlConfigInfo.ucReorderAgingTime[ac];
-         }
          timerStatus = vos_timer_start(&currentReorderInfo->agingTimer,
-                                       reorderTime);
+                                       WLANTL_BA_REORDERING_AGING_TIMER);
          if(!VOS_IS_STATUS_SUCCESS(timerStatus))
          {
             TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"Timer start fail: %d", timerStatus));

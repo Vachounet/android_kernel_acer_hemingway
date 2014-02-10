@@ -336,13 +336,7 @@ VOS_STATUS sysMcProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
    VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
    v_VOID_t *hHal;
 
-   if (NULL == pMsg)
-   {
-      VOS_ASSERT(0);
-      VOS_TRACE(VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
-            "%s: NULL pointer to vos_msg_t", __func__);
-      return VOS_STATUS_E_INVAL;
-   }
+   VOS_ASSERT( pMsg );
 
    // All 'new' SYS messages are identified by a cookie in the reserved
    // field of the message as well as the message type.  This prevents
@@ -404,12 +398,16 @@ VOS_STATUS sysMcProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
 
          case SYS_MSG_ID_MC_TIMER:
          {
-            vos_timer_callback_t timerCB = pMsg->callback;
+            vos_timer_callback_t timerCB;
+            // hummmm... note says...
+            // invoke the timer callback and the user data stick
+            // into the bodyval; no body to free.    I think this is
+            // what that means.
+            timerCB = (vos_timer_callback_t)pMsg->bodyptr;
 
-            if (NULL != timerCB)
-            {
-               timerCB(pMsg->bodyptr);
-            }
+            // make the callback to the timer routine...
+            timerCB( (v_VOID_t *)pMsg->bodyval );
+
             break;
          }
          case SYS_MSG_ID_FTM_RSP:
@@ -461,13 +459,7 @@ VOS_STATUS sysTxProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
 {
    VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
 
-   if (NULL == pMsg)
-   {
-      VOS_ASSERT(0);
-      VOS_TRACE(VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
-            "%s: NULL pointer to vos_msg_t", __func__);
-      return VOS_STATUS_E_INVAL;
-   }
+   VOS_ASSERT( pMsg );
 
    // All 'new' SYS messages are identified by a cookie in the reserved
    // field of the message as well as the message type.  This prevents
@@ -495,12 +487,17 @@ VOS_STATUS sysTxProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
 
          case SYS_MSG_ID_TX_TIMER:
          {
-            vos_timer_callback_t timerCB = pMsg->callback;
+            vos_timer_callback_t timerCB;
 
-            if (NULL != timerCB)
-            {
-               timerCB(pMsg->bodyptr);
-            }
+            // hummmm... note says...
+            // invoke the timer callback and the user data stick
+            // into the bodyval; no body to free.    I think this is
+            // what that means.
+            timerCB = (vos_timer_callback_t)pMsg->bodyptr;
+
+            // make the callback to the timer routine...
+            timerCB( (v_VOID_t *)pMsg->bodyval );
+
             break;
          }
 
@@ -533,13 +530,7 @@ VOS_STATUS sysRxProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
 {
    VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
 
-   if (NULL == pMsg)
-   {
-      VOS_ASSERT(0);
-      VOS_TRACE(VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
-            "%s: NULL pointer to vos_msg_t", __func__);
-      return VOS_STATUS_E_INVAL;
-   }
+   VOS_ASSERT( pMsg );
 
    // All 'new' SYS messages are identified by a cookie in the reserved
    // field of the message as well as the message type.  This prevents
@@ -553,12 +544,17 @@ VOS_STATUS sysRxProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
       {
          case SYS_MSG_ID_RX_TIMER:
          {
-            vos_timer_callback_t timerCB = pMsg->callback;
+            vos_timer_callback_t timerCB;
 
-            if (NULL != timerCB)
-            {
-               timerCB(pMsg->bodyptr);
-            }
+            // hummmm... note says...
+            // invoke the timer callback and the user data stick
+            // into the bodyval; no body to free.    I think this is
+            // what that means.
+            timerCB = (vos_timer_callback_t)pMsg->bodyptr;
+
+            // make the callback to the timer routine...
+            timerCB( (v_VOID_t *)pMsg->bodyval );
+
             break;
          }
 

@@ -85,7 +85,6 @@
 #include "wlan_hdd_cfg80211.h"
 
 #include "sapApi.h"
-#include "vos_trace.h"
 
 
 
@@ -171,13 +170,6 @@ VOS_STATUS vos_preOpen ( v_CONTEXT_t *pVosContext )
    vos_mem_zero(gpVosContext, sizeof(VosContextType));
 
    *pVosContext = gpVosContext;
-
-   /* Initialize the spinlock */
-   vos_trace_spin_lock_init();
-   /* it is the right time to initialize MTRACE structures */
-   #if defined(TRACE_RECORD)
-       vosTraceInit();
-   #endif
 
    return VOS_STATUS_SUCCESS;
 
@@ -277,7 +269,6 @@ VOS_STATUS vos_open( v_CONTEXT_t *pVosContext, v_SIZE_t hddContextSize )
 
    /* Initialize the timer module */
    vos_timer_module_init();
-
 
    /* Initialize the probe event */
    if (vos_event_init(&gpVosContext->ProbeEvent) != VOS_STATUS_SUCCESS)
@@ -514,29 +505,11 @@ VOS_STATUS vos_preStart( v_CONTEXT_t vosContext )
    VOS_TRACE(VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_INFO,
              "vos prestart");
 
-   if (gpVosContext != pVosContext)
-   {
-      VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                "%s: Context mismatch", __func__);
-      VOS_ASSERT(0);
-      return VOS_STATUS_E_INVAL;
-   }
+   VOS_ASSERT(gpVosContext == pVosContext);
 
-   if (pVosContext->pMACContext == NULL)
-   {
-       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-            "%s: MAC NULL context", __func__);
-       VOS_ASSERT(0);
-       return VOS_STATUS_E_INVAL;
-   }
+   VOS_ASSERT( NULL != pVosContext->pMACContext);
 
-   if (pVosContext->pWDAContext == NULL)
-   {
-       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-          "%s: WDA NULL context", __func__);
-       VOS_ASSERT(0);
-       return VOS_STATUS_E_INVAL;
-   }
+   VOS_ASSERT( NULL != pVosContext->pWDAContext);
 
    /* call macPreStart */
    vStatus = macPreStart(gpVosContext->pMACContext);
@@ -1928,10 +1901,6 @@ vos_fetch_tl_cfg_parms
   pTLConfig->ucAcWeights[1] = pConfig->WfqBeWeight;
   pTLConfig->ucAcWeights[2] = pConfig->WfqViWeight;
   pTLConfig->ucAcWeights[3] = pConfig->WfqVoWeight;
-  pTLConfig->ucReorderAgingTime[0] = pConfig->BkReorderAgingTime;/*WLANTL_AC_BK*/
-  pTLConfig->ucReorderAgingTime[1] = pConfig->BeReorderAgingTime;/*WLANTL_AC_BE*/
-  pTLConfig->ucReorderAgingTime[2] = pConfig->ViReorderAgingTime;/*WLANTL_AC_VI*/
-  pTLConfig->ucReorderAgingTime[3] = pConfig->VoReorderAgingTime;/*WLANTL_AC_VO*/
   pTLConfig->uDelayedTriggerFrmInt = pConfig->DelayedTriggerFrmInt;
   pTLConfig->uMinFramesProcThres = pConfig->MinFramesProcThres;
 
@@ -2021,6 +1990,14 @@ VOS_STATUS vos_shutdown(v_CONTEXT_t vosContext)
   }
 
   ((pVosContextType)vosContext)->pMACContext = NULL;
+
+  vosStatus = vos_nv_close();
+  if (!VOS_IS_STATUS_SUCCESS(vosStatus))
+  {
+     VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+         "%s: Failed to close NV", __func__);
+     VOS_ASSERT( VOS_IS_STATUS_SUCCESS( vosStatus ) );
+  }
 
   vosStatus = sysClose( vosContext );
   if (!VOS_IS_STATUS_SUCCESS(vosStatus))

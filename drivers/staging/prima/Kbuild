@@ -643,19 +643,6 @@ ifeq ($(CONFIG_ENABLE_LINUX_REG), y)
 CDEFINES += -DCONFIG_ENABLE_LINUX_REG
 endif
 
-CDEFINES += -DFEATURE_WLAN_CH_AVOID
-
-# Some kernel include files are being moved.  Check to see if
-# the old version of the files are present
-
-ifneq ($(wildcard $(srctree)/arch/$(SRCARCH)/mach-msm/include/mach/msm_smd.h),)
-CDEFINES += -DEXISTS_MSM_SMD
-endif
-
-ifneq ($(wildcard $(srctree)/arch/$(SRCARCH)/mach-msm/include/mach/msm_smsm.h),)
-CDEFINES += -DEXISTS_MSM_SMSM
-endif
-
 # Fix build for GCC 4.7
 EXTRA_CFLAGS += -Wno-maybe-uninitialized -Wno-unused-function
 

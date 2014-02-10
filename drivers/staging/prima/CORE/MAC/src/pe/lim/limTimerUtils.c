@@ -101,7 +101,6 @@ v_UINT_t
 limCreateTimers(tpAniSirGlobal pMac)
 {
     tANI_U32 cfgValue, i=0;
-    tANI_U32 cfgValue1;
 
     PELOG1(limLog(pMac, LOG1, FL("Creating Timers used by LIM module in Role %d"), pMac->lim.gLimSystemRole);)
 
@@ -135,14 +134,14 @@ limCreateTimers(tpAniSirGlobal pMac)
      * timer expires
      */
 
-    cfgValue1 = cfgValue/2 ;
-    if( cfgValue1 >= 1)
+    cfgValue = cfgValue/2 ;
+    if( cfgValue >= 1)
     {
         // Create periodic probe request timer and activate them later
         if (tx_timer_create(&pMac->lim.limTimers.gLimPeriodicProbeReqTimer,
                            "Periodic Probe Request Timer",
                            limTimerHandler, SIR_LIM_PERIODIC_PROBE_REQ_TIMEOUT,
-                           cfgValue1, 0,
+                           cfgValue, 0,
                            TX_NO_ACTIVATE) != TX_SUCCESS)
         {
            /// Could not start Periodic Probe Req timer.
@@ -164,9 +163,6 @@ limCreateTimers(tpAniSirGlobal pMac)
                FL("could not retrieve MAXChannelTimeout value"));
     }
     cfgValue = SYS_MS_TO_TICKS(cfgValue);
-
-    /* Limiting max numm of probe req for each channel scan */
-    pMac->lim.maxProbe = (cfgValue/cfgValue1);
 
     if (tx_timer_create(&pMac->lim.limTimers.gLimMaxChannelTimer,
                         "MAX CHANNEL TIMEOUT",
@@ -1442,7 +1438,7 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
             }
             else
             {
-                limLog(pMac, LOG1, FL("Deactivated probe after hb timer"));
+                limLog(pMac, LOGE, FL("Deactivated probe after hb timer"));
             }
 
             if (wlan_cfgGetInt(pMac, WNI_CFG_PROBE_AFTER_HB_FAIL_TIMEOUT,

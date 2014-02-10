@@ -1662,13 +1662,6 @@ tANI_BOOLEAN pmcValidateConnectState( tHalHandle hHal )
       pmcLog(pMac, LOGW, "PMC: Multiple active sessions exists. BMPS cannot be entered");
       return eANI_BOOLEAN_FALSE;
    }
-#ifdef FEATURE_WLAN_TDLS
-   if (pMac->isTdlsPowerSaveProhibited)
-   {
-      pmcLog(pMac, LOGE, FL("TDLS peer(s) connected/discovery sent. Dont enter BMPS"));
-      return eANI_BOOLEAN_FALSE;
-   }
-#endif
    return eANI_BOOLEAN_TRUE;
 }
 
@@ -2173,12 +2166,8 @@ eHalStatus pmcWowlAddBcastPattern (
     {
        log_ptr->pattern_id = pattern->ucPatternId;
        log_ptr->pattern_byte_offset = pattern->ucPatternByteOffset;
-       log_ptr->pattern_size =
-           (pattern->ucPatternSize <= VOS_LOG_MAX_WOW_PTRN_SIZE) ?
-           pattern->ucPatternSize : VOS_LOG_MAX_WOW_PTRN_SIZE;
-       log_ptr->pattern_mask_size =
-          (pattern->ucPatternMaskSize <= VOS_LOG_MAX_WOW_PTRN_MASK_SIZE) ?
-           pattern->ucPatternMaskSize : VOS_LOG_MAX_WOW_PTRN_MASK_SIZE;
+       log_ptr->pattern_size = pattern->ucPatternSize;
+       log_ptr->pattern_mask_size = pattern->ucPatternMaskSize;
 
        vos_mem_copy(log_ptr->pattern, pattern->ucPattern,
                     SIR_WOWL_BCAST_PATTERN_MAX_SIZE);
@@ -2898,12 +2887,6 @@ eHalStatus pmcSetPreferredNetworkList
     tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId );
     tANI_U8 ucDot11Mode;
 
-    if (NULL == pSession)
-    {
-        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
-                  "%s: pSession is NULL", __func__);
-        return eHAL_STATUS_FAILURE;
-    }
     VOS_TRACE( VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
                "%s: SSID = 0x%08x%08x%08x%08x%08x%08x%08x%08x, "
                "0x%08x%08x%08x%08x%08x%08x%08x%08x", __func__,
@@ -2923,12 +2906,7 @@ eHalStatus pmcSetPreferredNetworkList
                *((v_U32_t *) &pRequest->aNetworks[1].ssId.ssId[20]),
                *((v_U32_t *) &pRequest->aNetworks[1].ssId.ssId[24]),
                *((v_U32_t *) &pRequest->aNetworks[1].ssId.ssId[28]));
-    if (!pSession)
-    {
-        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
-            "%s: pSessionis NULL", __func__);
-        return eHAL_STATUS_FAILURE;
-    }
+
 
     pRequestBuf = vos_mem_malloc(sizeof(tSirPNOScanReq));
     if (NULL == pRequestBuf)
@@ -3024,7 +3002,7 @@ eHalStatus pmcSetRssiFilter(tHalHandle hHal,   v_U8_t        rssiThreshold)
     vos_msg_t msg;
 
 
-    pRequestBuf = vos_mem_malloc(sizeof(tSirSetRSSIFilterReq));
+    pRequestBuf = vos_mem_malloc(sizeof(tpSirSetRSSIFilterReq));
     if (NULL == pRequestBuf)
     {
         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Not able to allocate memory for PNO request", __func__);

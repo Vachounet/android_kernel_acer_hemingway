@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -120,7 +120,6 @@ typedef struct _smeConfigParams
 #endif
     tANI_BOOLEAN  fScanOffload;
     tANI_U8  isAmsduSupportInAMPDU;
-    tANI_U32       fEnableDebugLog;
 } tSmeConfigParams, *tpSmeConfigParams;
 
 typedef enum
@@ -1172,18 +1171,6 @@ extern eHalStatus sme_RegisterPowerSaveCheck (
    tANI_BOOLEAN (*checkRoutine) (void *checkContext), void *checkContext);
 
 /* ---------------------------------------------------------------------------
-    \fn sme_Register11dScanDoneCallback
-    \brief  Register a routine of type csrScanCompleteCallback which is
-            called whenever an 11d scan is done
-    \param  hHal - The handle returned by macOpen.
-    \param  callback -  11d scan complete routine to be registered
-    \return eHalStatus
-  ---------------------------------------------------------------------------*/
-extern eHalStatus sme_Register11dScanDoneCallback (
-   tHalHandle hHal,
-   csrScanCompleteCallback);
-
-/* ---------------------------------------------------------------------------
     \fn sme_DeregisterPowerSaveCheck
     \brief  Deregister a power save check routine
     \param  hHal - The handle returned by macOpen.
@@ -1391,21 +1378,6 @@ eHalStatus sme_GetCountryCode(tHalHandle hHal, tANI_U8 *pBuf, tANI_U8 *pbLen);
 
   -------------------------------------------------------------------------------*/
 eHalStatus sme_SetCountryCode(tHalHandle hHal, tANI_U8 *pCountry, tANI_BOOLEAN *pfRestartNeeded);
-
-/* ---------------------------------------------------------------------------
-
-    \fn sme_InitChannels
-
-    \brief Used to initialize CSR channel lists while driver loading
-
-    \param hHal - global pMac structure
-
-    \return eHalStatus  SUCCESS.
-
-                         FAILURE or RESOURCES  The API finished and failed.
-
- -------------------------------------------------------------------------------*/
-eHalStatus sme_InitChannels(tHalHandle hHal);
 
 /* ---------------------------------------------------------------------------
     \fn sme_ResetCountryCodeInformation
@@ -3189,22 +3161,4 @@ sme_StopBatchScanInd
 );
 
 #endif
-
-#ifdef FEATURE_WLAN_CH_AVOID
-/* ---------------------------------------------------------------------------
-    \fn sme_AddChAvoidCallback
-    \brief  Used to plug in callback function
-            Which notify channel may not be used with SAP or P2PGO mode.
-            Notification come from FW.
-    \param  hHal
-    \param  pCallbackfn : callback function pointer should be plugged in
-    \- return eHalStatus
-    -------------------------------------------------------------------------*/
-eHalStatus sme_AddChAvoidCallback
-(
-   tHalHandle hHal,
-   void (*pCallbackfn)(void *pAdapter, void *indParam)
-);
-#endif /* FEATURE_WLAN_CH_AVOID */
-eHalStatus sme_UpdateConnectDebug(tHalHandle hHal, tANI_U32 set_value);
 #endif //#if !defined( __SME_API_H )

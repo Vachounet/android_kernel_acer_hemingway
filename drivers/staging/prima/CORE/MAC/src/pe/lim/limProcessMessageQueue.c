@@ -70,9 +70,6 @@
 #include "vos_packet.h"
 #include "vos_memory.h"
 
-/* This value corresponds to 500 ms */
-#define MAX_PROBEREQ_TIME 5000
-
 void limLogSessionStates(tpAniSirGlobal pMac);
 
 /** -------------------------------------------------------------
@@ -229,17 +226,10 @@ limDeferMsg(tpAniSirGlobal pMac, tSirMsgQ *pMsg)
 
     if (retCode == TX_SUCCESS)
     {
-        limLog(pMac, LOG1,
-               FL("Deferred message(0x%X) limSmeState %d (prev sme state %d)"
-                  " sysRole %d mlm state %d (prev mlm state %d)"),
-               pMsg->type, pMac->lim.gLimSmeState, pMac->lim.gLimPrevSmeState,
-               pMac->lim.gLimSystemRole, pMac->lim.gLimMlmState,
-               pMac->lim.gLimPrevMlmState);
         MTRACE(macTraceMsgRx(pMac, NO_SESSION, LIM_TRACE_MAKE_RXMSG(pMsg->type, LIM_MSG_DEFERRED));)
     }
     else
     {
-        limLog(pMac, LOGE, FL("Dropped lim message (0x%X)"), pMsg->type);
         MTRACE(macTraceMsgRx(pMac, NO_SESSION, LIM_TRACE_MAKE_RXMSG(pMsg->type, LIM_MSG_DROPPED));)
     }
 
@@ -544,16 +534,6 @@ limHandle80211Frames(tpAniSirGlobal pMac, tpSirMsgQ limMsg, tANI_U8 *pDeferMsg)
                        WDA_GET_RX_MPDU_HEADER_LEN(pRxPacketInfo));
 #endif
 
-    if (pMac->fEnableDebugLog & 0x1) {
-        if ((fc.type == SIR_MAC_MGMT_FRAME) &&
-                (fc.subType != SIR_MAC_MGMT_PROBE_REQ) &&
-                (fc.subType != SIR_MAC_MGMT_PROBE_RSP) &&
-                (fc.subType != SIR_MAC_MGMT_BEACON))
-        {
-            limLog(pMac, LOGE, FL("RX MGMT - Type %hu, SubType %hu"),
-                    fc.type, fc.subType);
-        }
-    }
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
     if ( WDA_GET_ROAMCANDIDATEIND(pRxPacketInfo))
     {
@@ -888,7 +868,6 @@ eHalStatus limSendStopScanOffloadReq(tpAniSirGlobal pMac, tANI_U8 SessionId)
         return eHAL_STATUS_FAILURE;
     }
 
-    limLog(pMac, LOG1, FL("Abort ongoing offload scan."));
     return eHAL_STATUS_SUCCESS;
 
 }
@@ -1049,33 +1028,6 @@ void limProcessOemDataRsp(tpAniSirGlobal pMac, tANI_U32* body)
 
 #endif
 
-static tANI_BOOLEAN limAgeOutProbeReq( tpAniSirGlobal pMac, tpSirMsgQ  limMsg,
-                                       vos_pkt_t  *pVosPkt )
-{
-    tANI_U8    *pRxPacketInfo = NULL;
-    tSirMacFrameCtl  fc;
-    tpSirMacMgmtHdr    pHdr=NULL;
-    tANI_BOOLEAN match = VOS_FALSE;
-
-    limGetBDfromRxPacket(pMac, limMsg->bodyptr, (tANI_U32 **)&pRxPacketInfo);
-    pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
-    fc = pHdr->fc;
-    if ( fc.subType == SIR_MAC_MGMT_PROBE_REQ )
-    {
-        if(  vos_timer_get_system_ticks() - pVosPkt->timestamp >= MAX_PROBEREQ_TIME )
-        {
-            // drop packet
-           limLog(pMac, LOGE,
-           FL("Dropping Aged Out probe requests. Peer MAC is "MAC_ADDRESS_STR),
-                MAC_ADDR_ARRAY(pHdr->sa));
-
-            vos_pkt_return_packet(pVosPkt);
-            match = VOS_TRUE;
-        }
-    }
-    return match;
-}
-
 
 /**
  * limProcessMessages
@@ -1230,18 +1182,6 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
                     break;
 
                 }
-
-                /*
-                * putting a check for age out probe request frames
-                * such that any probe req more than 0.5 sec old can directly
-                * be dropped. With this, there won't be blocking of MC thread.
-                */
-
-                if( limAgeOutProbeReq ( pMac, &limMsgNew, pVosPkt ))
-                {
-                   break;
-                }
-
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
                 /* 
                  * TDLS frames comes as translated frames as well as
@@ -1260,7 +1200,6 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
                 }
                 else
 #endif
-
                 limHandle80211Frames(pMac, &limMsgNew, &deferMsg);
 
                 if ( deferMsg == true )

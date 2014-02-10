@@ -104,15 +104,9 @@ typedef struct vos_msg_s
      * Messages should use either bodyptr or bodyval; not both !!!.
      */
     void *bodyptr;
-
-    v_U32_t bodyval;
-
-    /*
-     * Some messages provide a callback function.  The function signature
-     * must be agreed upon between the two entities exchanging the message
-     */
-    void *callback;
-
+    
+    v_U32_t bodyval;    
+    
 } vos_msg_t;
 
 

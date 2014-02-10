@@ -44,6 +44,9 @@
   \file  wlan_hdd_tx_rx.c
   
   \brief Linux HDD Tx/RX APIs
+         Copyright 2008 (c) Qualcomm, Incorporated.
+         All Rights Reserved.
+         Qualcomm Confidential and Proprietary.
   
   ==========================================================================*/
   
@@ -220,12 +223,11 @@ static VOS_STATUS hdd_flush_tx_queues( hdd_adapter_t *pAdapter )
 void hdd_flush_ibss_tx_queues( hdd_adapter_t *pAdapter, v_U8_t STAId)
 {
    v_U8_t i;
-   v_SIZE_t size = 0;
-   v_U8_t skbStaIdx;
    skb_list_node_t *pktNode = NULL;
-   hdd_list_node_t *tmp = NULL, *next = NULL;
-   struct netdev_queue *txq;
    struct sk_buff *skb = NULL;
+   v_U8_t skbStaIdx;
+   hdd_list_node_t *tmp = NULL;
+   struct netdev_queue *txq;
 
    for (i = 0; i < NUM_TX_QUEUES; i++)
    {
@@ -238,8 +240,10 @@ void hdd_flush_ibss_tx_queues( hdd_adapter_t *pAdapter, v_U8_t STAId)
       }
 
       /* Iterate through the queue and identify the data for STAId */
-      list_for_each_safe(tmp, next, &pAdapter->wmm_tx_queue[i].anchor)
+      list_for_each(tmp, &pAdapter->wmm_tx_queue[i].anchor)
       {
+         hdd_list_node_t *tmpNext = NULL;
+
          pktNode = list_entry(tmp, skb_list_node_t, anchor);
          if (pktNode != NULL)
          {
@@ -249,9 +253,12 @@ void hdd_flush_ibss_tx_queues( hdd_adapter_t *pAdapter, v_U8_t STAId)
             skbStaIdx = *(v_U8_t *)(((v_U8_t *)(skb->data)) - 1);
             if (skbStaIdx == STAId)
             {
+               tmpNext = tmp->next;
+
                /* Data for STAId is freed along with the queue node */
                kfree_skb(skb);
                list_del(tmp);
+               tmp = tmpNext;
 
                ++pAdapter->hdd_stats.hddTxRxStats.txFlushed;
                ++pAdapter->hdd_stats.hddTxRxStats.txFlushedAC[i];
@@ -261,17 +268,12 @@ void hdd_flush_ibss_tx_queues( hdd_adapter_t *pAdapter, v_U8_t STAId)
       }
 
       /* Restart the queue only-if suspend and the queue was flushed */
-      hdd_list_size( &pAdapter->wmm_tx_queue[i], &size );
       txq = netdev_get_tx_queue(pAdapter->dev, i);
-
-      if (VOS_TRUE == pAdapter->isTxSuspended[i] &&
-          size <= HDD_TX_QUEUE_LOW_WATER_MARK &&
-          netif_tx_queue_stopped(txq) )
+      if ( (pAdapter->wmm_tx_queue[i].count <
+            pAdapter->wmm_tx_queue[i].max_size) &&
+           (netif_tx_queue_stopped(txq)))
       {
          netif_tx_start_queue(txq);
-         pAdapter->isTxSuspended[i] = VOS_FALSE;
-         ++pAdapter->hdd_stats.hddTxRxStats.txDequeDePressured;
-         ++pAdapter->hdd_stats.hddTxRxStats.txDequeDePressuredAC[i];
       }
 
       spin_unlock_bh(&pAdapter->wmm_tx_queue[i].lock);
@@ -719,6 +721,8 @@ int hdd_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
    {
       if (pAdapter->wmm_tx_queue[ac].count >= HDD_TX_QUEUE_LOW_WATER_MARK)
       {
+          VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
+                     "%s: Best Effort AC Tx queue is 3/4th full", __func__);
           pAdapter->isVosLowResource = VOS_TRUE;
       }
       else
@@ -991,7 +995,7 @@ v_BOOL_t hdd_IsEAPOLPacket( vos_pkt_t *pVosPacket )
                           &pBuffer, HDD_ETHERTYPE_802_1_X_SIZE );
     if (VOS_IS_STATUS_SUCCESS( vosStatus ) )
     {
-       if (pBuffer && vos_be16_to_cpu( *(unsigned short*)pBuffer ) == HDD_ETHERTYPE_802_1_X )
+       if ( vos_be16_to_cpu( *(unsigned short*)pBuffer ) == HDD_ETHERTYPE_802_1_X )
        {
           fEAPOL = VOS_TRUE;
        }
@@ -1022,7 +1026,7 @@ v_BOOL_t hdd_IsWAIPacket( vos_pkt_t *pVosPacket )
 
     if (VOS_IS_STATUS_SUCCESS( vosStatus ) )
     {
-       if (pBuffer && vos_be16_to_cpu( *((unsigned short*)pBuffer)) == HDD_ETHERTYPE_WAI)
+       if ( vos_be16_to_cpu( *(unsigned short*)pBuffer ) == HDD_ETHERTYPE_WAI)
        {
           fIsWAI = VOS_TRUE;
        }
@@ -1055,18 +1059,16 @@ VOS_STATUS hdd_tx_complete_cbk( v_VOID_t *vosContext,
    
    if( ( NULL == vosContext ) || ( NULL == pVosPacket )  )
    {
-      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                       "%s: Null params being passed", __func__);
+      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,"%s: Null params being passed", __func__);
       return VOS_STATUS_E_FAILURE; 
    }
 
    //Return the skb to the OS
    status = vos_pkt_get_os_packet( pVosPacket, &pOsPkt, VOS_TRUE );
-   if (!VOS_IS_STATUS_SUCCESS( status ))
+   if(!VOS_IS_STATUS_SUCCESS( status ))
    {
       //This is bad but still try to free the VOSS resources if we can
-      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                       "%s: Failure extracting skb from vos pkt", __func__);
+      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,"%s: Failure extracting skb from vos pkt", __func__);
       vos_pkt_return_packet( pVosPacket );
       return VOS_STATUS_E_FAILURE;
    }
@@ -1075,10 +1077,9 @@ VOS_STATUS hdd_tx_complete_cbk( v_VOID_t *vosContext,
    pHddCtx = (hdd_context_t *)vos_get_context( VOS_MODULE_ID_HDD, vosContext );
    //Get the Adapter context.
    pAdapter = hdd_get_adapter(pHddCtx,WLAN_HDD_INFRA_STATION);
-   if (pAdapter == NULL)
+   if(pAdapter == NULL)
    {
-      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-                              "%s: HDD adapter context is Null", __func__);
+      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,"%s: HDD adapter context is Null", __func__);
    }
    else
    {
@@ -1089,10 +1090,9 @@ VOS_STATUS hdd_tx_complete_cbk( v_VOID_t *vosContext,
 
    //Return the VOS packet resources.
    status = vos_pkt_return_packet( pVosPacket );
-   if (!VOS_IS_STATUS_SUCCESS( status ))
+   if(!VOS_IS_STATUS_SUCCESS( status ))
    {
-      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                    "%s: Could not return VOS packet to the pool", __func__);
+      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,"%s: Could not return VOS packet to the pool", __func__);
    }
 
    return status;
@@ -1131,7 +1131,6 @@ VOS_STATUS hdd_tx_fetch_packet_cbk( v_VOID_t *vosContext,
    WLANTL_ACEnumType newAc;
    v_SIZE_t size = 0;
    tANI_U8   acAdmitted, i;
-   v_U8_t proto_type = 0;
 
    //Sanity check on inputs
    if ( ( NULL == vosContext ) || 
@@ -1139,8 +1138,7 @@ VOS_STATUS hdd_tx_fetch_packet_cbk( v_VOID_t *vosContext,
         ( NULL == ppVosPacket ) ||
         ( NULL == pPktMetaInfo ) )
    {
-      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                          "%s: Null Params being passed", __func__);
+      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,"%s: Null Params being passed", __func__);
       return VOS_STATUS_E_FAILURE;
    }
 
@@ -1148,10 +1146,10 @@ VOS_STATUS hdd_tx_fetch_packet_cbk( v_VOID_t *vosContext,
    pHddCtx = (hdd_context_t *)vos_get_context( VOS_MODULE_ID_HDD, vosContext );
    if(pHddCtx == NULL)
    {
-      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                        "%s: HDD adapter context is Null", __func__);
+      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,"%s: HDD adapter context is Null", __func__);
       return VOS_STATUS_E_FAILURE;
    }
+ 
    pAdapter = pHddCtx->sta_to_adapter[*pStaId];
    if ((NULL == pAdapter) || (WLAN_HDD_ADAPTER_MAGIC != pAdapter->magic))
    {
@@ -1166,16 +1164,14 @@ VOS_STATUS hdd_tx_fetch_packet_cbk( v_VOID_t *vosContext,
    //Make sure the AC being asked for is sane
    if( ac >= WLANTL_MAX_AC || ac < 0)
    {
-      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                            "%s: Invalid AC %d passed by TL", __func__, ac);
+      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,"%s: Invalid AC %d passed by TL", __func__, ac);
       return VOS_STATUS_E_FAILURE;
    }
 
    ++pAdapter->hdd_stats.hddTxRxStats.txFetchedAC[ac];
 
 #ifdef HDD_WMM_DEBUG
-   VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
-                              "%s: AC %d passed by TL", __func__, ac);
+   VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,"%s: AC %d passed by TL", __func__, ac);
 #endif // HDD_WMM_DEBUG
 
    // We find an AC with packets
@@ -1312,22 +1308,6 @@ VOS_STATUS hdd_tx_fetch_packet_cbk( v_VOID_t *vosContext,
       pPktMetaInfo->ucIsEapol = 0;       
    else 
       pPktMetaInfo->ucIsEapol = hdd_IsEAPOLPacket( pVosPacket ) ? 1 : 0;
-
-   if (pHddCtx->cfg_ini->gEnableDebugLog)
-   {
-      proto_type = vos_pkt_get_proto_type(skb,
-                                          pHddCtx->cfg_ini->gEnableDebugLog);
-      if (VOS_PKT_PROTO_TYPE_EAPOL & proto_type)
-      {
-         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                   "STA TX EAPOL");
-      }
-      else if (VOS_PKT_PROTO_TYPE_DHCP & proto_type)
-      {
-         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                   "STA TX DHCP");
-      }
-   }
 
 #ifdef FEATURE_WLAN_WAPI
    // Override usIsEapol value when its zero for WAPI case
@@ -1494,10 +1474,9 @@ VOS_STATUS hdd_tx_low_resource_cbk( vos_pkt_t *pVosPacket,
    v_SIZE_t size = 0;
    hdd_adapter_t* pAdapter = (hdd_adapter_t *)userData;
    
-   if (NULL == pAdapter)
+   if(pAdapter == NULL)
    {
-      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                            "%s: pAdapter is Null", __func__);
+      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,"%s: HDD adapter context is Null", __func__);
       return VOS_STATUS_E_FAILURE;
    }
 
@@ -1520,8 +1499,7 @@ VOS_STATUS hdd_tx_low_resource_cbk( vos_pkt_t *pVosPacket,
                                         (WLANTL_ACEnumType)i );
          if( !VOS_IS_STATUS_SUCCESS( status ) )
          {
-            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                           "%s: Failure in indicating pkt to TL for ac=%d", __func__, i);
+            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,"%s: Failure in indicating pkt to TL for ac=%d", __func__,i); 
          }
       }
    }
@@ -1555,23 +1533,20 @@ VOS_STATUS hdd_rx_packet_cbk( v_VOID_t *vosContext,
    struct sk_buff *skb = NULL;
    vos_pkt_t* pVosPacket;
    vos_pkt_t* pNextVosPacket;
-   v_U8_t proto_type;
 
    //Sanity check on inputs
    if ( ( NULL == vosContext ) || 
         ( NULL == pVosPacketChain ) ||
         ( NULL == pRxMetaInfo ) )
    {
-      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                         "%s: Null params being passed", __func__);
+      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,"%s: Null params being passed", __func__);
       return VOS_STATUS_E_FAILURE;
    }
 
    pHddCtx = (hdd_context_t *)vos_get_context( VOS_MODULE_ID_HDD, vosContext );
    if ( NULL == pHddCtx )
    {
-      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                           "%s: HDD adapter context is Null", __func__);
+      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,"%s: HDD adapter context is Null", __func__);
       return VOS_STATUS_E_FAILURE;
    }
 
@@ -1597,8 +1572,7 @@ VOS_STATUS hdd_rx_packet_cbk( v_VOID_t *vosContext,
       if (!((status == VOS_STATUS_SUCCESS) || (status == VOS_STATUS_E_EMPTY)))
       {
          ++pAdapter->hdd_stats.hddTxRxStats.rxDropped;
-         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                         "%s: Failure walking packet chain", __func__);
+         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,"%s: Failure walking packet chain", __func__);
          return VOS_STATUS_E_FAILURE;
       }
 
@@ -1608,8 +1582,7 @@ VOS_STATUS hdd_rx_packet_cbk( v_VOID_t *vosContext,
       if(!VOS_IS_STATUS_SUCCESS( status ))
       {
          ++pAdapter->hdd_stats.hddTxRxStats.rxDropped;
-         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                                "%s: Failure extracting skb from vos pkt", __func__);
+         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,"%s: Failure extracting skb from vos pkt", __func__);
          return VOS_STATUS_E_FAILURE;
       }
 
@@ -1652,22 +1625,6 @@ VOS_STATUS hdd_rx_packet_cbk( v_VOID_t *vosContext,
         }
     }
 #endif
-
-      if (pHddCtx->cfg_ini->gEnableDebugLog)
-      {
-         proto_type = vos_pkt_get_proto_type(skb,
-                                             pHddCtx->cfg_ini->gEnableDebugLog);
-         if (VOS_PKT_PROTO_TYPE_EAPOL & proto_type)
-         {
-            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                      "STA RX EAPOL");
-         }
-         else if (VOS_PKT_PROTO_TYPE_DHCP & proto_type)
-         {
-            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                      "STA RX DHCP");
-         }
-      }
 
       skb->dev = pAdapter->dev;
       skb->protocol = eth_type_trans(skb, skb->dev);

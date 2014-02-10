@@ -1242,9 +1242,7 @@ limSendSmeDisassocNtf(tpAniSirGlobal pMac,
 
                 return;
             }
-            limLog(pMac, LOG1, FL("send eWNI_SME_DEAUTH_RSP with "
-            "retCode: %d for "MAC_ADDRESS_STR),reasonCode,
-            MAC_ADDR_ARRAY(peerMacAddr));
+
             pSirSmeDisassocRsp->messageType = eWNI_SME_DISASSOC_RSP;
             pSirSmeDisassocRsp->length      = sizeof(tSirSmeDisassocRsp);
             //sessionId
@@ -1292,9 +1290,7 @@ limSendSmeDisassocNtf(tpAniSirGlobal pMac,
 
                 return;
             }
-            limLog(pMac, LOG1, FL("send eWNI_SME_DISASSOC_IND with "
-            "retCode: %d for "MAC_ADDRESS_STR),reasonCode,
-            MAC_ADDR_ARRAY(peerMacAddr));
+
             pSirSmeDisassocInd->messageType = eWNI_SME_DISASSOC_IND;
             pSirSmeDisassocInd->length      = sizeof(tSirSmeDisassocInd);
             
@@ -1665,9 +1661,7 @@ limSendSmeDeauthNtf(tpAniSirGlobal pMac, tSirMacAddr peerMacAddr, tSirResultCode
 
                 return;
             }
-            limLog(pMac, LOG1, FL("send eWNI_SME_DEAUTH_RSP with "
-            "retCode: %d for"MAC_ADDRESS_STR),reasonCode,
-            MAC_ADDR_ARRAY(peerMacAddr));
+
             pSirSmeDeauthRsp->messageType = eWNI_SME_DEAUTH_RSP;
             pSirSmeDeauthRsp->length      = sizeof(tSirSmeDeauthRsp);
             pSirSmeDeauthRsp->statusCode = reasonCode;
@@ -1700,9 +1694,7 @@ limSendSmeDeauthNtf(tpAniSirGlobal pMac, tSirMacAddr peerMacAddr, tSirResultCode
 
                 return;
             }
-            limLog(pMac, LOG1, FL("send eWNI_SME_DEAUTH_IND with "
-            "retCode: %d for "MAC_ADDRESS_STR),reasonCode,
-            MAC_ADDR_ARRAY(peerMacAddr));
+
             pSirSmeDeauthInd->messageType = eWNI_SME_DEAUTH_IND;
             pSirSmeDeauthInd->length      = sizeof(tSirSmeDeauthInd);
             pSirSmeDeauthInd->reasonCode = eSIR_MAC_UNSPEC_FAILURE_REASON;

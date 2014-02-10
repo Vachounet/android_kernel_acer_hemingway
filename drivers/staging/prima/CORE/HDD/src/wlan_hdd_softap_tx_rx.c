@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -44,6 +44,9 @@
   \file  wlan_hdd_softap_tx_rx.c
   
   \brief Linux HDD Tx/RX APIs
+         Copyright 2008 (c) Qualcomm, Incorporated.
+         All Rights Reserved.
+         Qualcomm Confidential and Proprietary.
   
   ==========================================================================*/
 
@@ -436,7 +439,6 @@ int hdd_softap_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
 
    ++pAdapter->hdd_stats.hddTxRxStats.txXmitQueued;
    ++pAdapter->hdd_stats.hddTxRxStats.txXmitQueuedAC[ac];
-   ++pAdapter->hdd_stats.hddTxRxStats.pkt_tx_count;
 
    if (1 == pktListSize)
    {
@@ -918,7 +920,7 @@ VOS_STATUS hdd_softap_tx_complete_cbk( v_VOID_t *vosContext,
 
    //Return the skb to the OS
    status = vos_pkt_get_os_packet( pVosPacket, &pOsPkt, VOS_TRUE );
-   if ((!VOS_IS_STATUS_SUCCESS(status)) || (!pOsPkt))
+   if(!VOS_IS_STATUS_SUCCESS( status ))
    {
       //This is bad but still try to free the VOSS resources if we can
       VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_ERROR,"%s: Failure extracting skb from vos pkt", __func__);
@@ -981,7 +983,6 @@ VOS_STATUS hdd_softap_tx_fetch_packet_cbk( v_VOID_t *vosContext,
    v_SIZE_t size = 0;
    v_U8_t STAId = WLAN_MAX_STA_COUNT;   
    hdd_context_t *pHddCtx = NULL;
-   v_U8_t proto_type = 0;
 
    //Sanity check on inputs
    if ( ( NULL == vosContext ) || 
@@ -1166,21 +1167,6 @@ VOS_STATUS hdd_softap_tx_fetch_packet_cbk( v_VOID_t *vosContext,
       }
    }
  
-   if (pHddCtx->cfg_ini->gEnableDebugLog)
-   {
-      proto_type = vos_pkt_get_proto_type(skb,
-                                          pHddCtx->cfg_ini->gEnableDebugLog);
-      if (VOS_PKT_PROTO_TYPE_EAPOL & proto_type)
-      {
-         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                   "SAP TX EAPOL");
-      }
-      else if (VOS_PKT_PROTO_TYPE_DHCP & proto_type)
-      {
-         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                   "SAP TX DHCP");
-      }
-   }
 //xg: @@@@: temporarily disble these. will revisit later
    {
       pPktMetaInfo->ucUP = pktNode->userPriority;
@@ -1315,7 +1301,6 @@ VOS_STATUS hdd_softap_rx_packet_cbk( v_VOID_t *vosContext,
    vos_pkt_t* pVosPacket;
    vos_pkt_t* pNextVosPacket;   
    hdd_context_t *pHddCtx = NULL;   
-   v_U8_t proto_type;
 
    //Sanity check on inputs
    if ( ( NULL == vosContext ) || 
@@ -1400,22 +1385,6 @@ VOS_STATUS hdd_softap_rx_packet_cbk( v_VOID_t *vosContext,
       ++pAdapter->hdd_stats.hddTxRxStats.rxPackets;
       ++pAdapter->stats.rx_packets;
       pAdapter->stats.rx_bytes += skb->len;
-
-      if (pHddCtx->cfg_ini->gEnableDebugLog)
-      {
-         proto_type = vos_pkt_get_proto_type(skb,
-                                             pHddCtx->cfg_ini->gEnableDebugLog);
-         if (VOS_PKT_PROTO_TYPE_EAPOL & proto_type)
-         {
-            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                      "SAP RX EAPOL");
-         }
-         else if (VOS_PKT_PROTO_TYPE_DHCP & proto_type)
-         {
-            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                      "SAP RX DHCP");
-         }
-      }
 
       if (WLAN_RX_BCMC_STA_ID == pRxMetaInfo->ucDesSTAId)
       {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -56,6 +56,9 @@
   Are listed for each API below.
 
 
+  Copyright (c) 2008 QUALCOMM Incorporated.
+  All Rights Reserved.
+  Qualcomm Confidential and Proprietary
 ===========================================================================*/
 
 /*===========================================================================
@@ -231,6 +234,18 @@ int bdPduInterruptGetThreshold = WLANTL_BD_PDU_INTERRUPT_GET_THRESHOLD;
 
 /* Maximum value of SNR that can be calculated by the HW */
 #define WLANTL_MAX_HW_SNR 35
+
+/*--------------------------------------------------------------------------
+   TID to AC mapping in TL
+ --------------------------------------------------------------------------*/
+const v_U8_t  WLANTL_TID_2_AC[WLAN_MAX_TID] = {   WLANTL_AC_BE,
+                                                  WLANTL_AC_BK,
+                                                  WLANTL_AC_BK,
+                                                  WLANTL_AC_BE,
+                                                  WLANTL_AC_VI,
+                                                  WLANTL_AC_VI,
+                                                  WLANTL_AC_VO,
+                                                  WLANTL_AC_VO };
 
 /*----------------------------------------------------------------------------
  * Type Declarations
@@ -544,11 +559,6 @@ WLANTL_Open
   for ( ucIndex = 0; ucIndex < WLANTL_MAX_AC ; ucIndex++)
   {
     pTLCb->tlConfigInfo.ucAcWeights[ucIndex] = pTLConfig->ucAcWeights[ucIndex];
-  }
-
-  for ( ucIndex = 0; ucIndex < WLANTL_MAX_AC ; ucIndex++)
-  {
-    pTLCb->tlConfigInfo.ucReorderAgingTime[ucIndex] = pTLConfig->ucReorderAgingTime[ucIndex];
   }
 
   // scheduling init to be the last one of previous round
@@ -3162,7 +3172,7 @@ WLANTL_TxMgmtFrm
   v_U8_t               ucTid,
   WLANTL_TxCompCBType  pfnCompTxFunc,
   v_PVOID_t            pvBDHeader,
-  v_U32_t              ucAckResponse
+  v_U8_t               ucAckResponse
 )
 {
   WLANTL_CbType*  pTLCb = NULL;
@@ -4076,11 +4086,7 @@ WLANTL_GetFrames
       WDA_TLI_PROCESS_FRAME_LEN( pTLCb->tlMgmtFrmClient.vosPendingDataBuff,
                           usPktLen, uResLen, uTotalPktLen);
 
-      if (usPktLen > WLANTL_MAX_ALLOWED_LEN)
-      {
-          usPktLen = WLANTL_MAX_ALLOWED_LEN;
-          VOS_ASSERT(0);
-      }
+      VOS_ASSERT(usPktLen <= WLANTL_MAX_ALLOWED_LEN);
 
       if ( ( pTLCb->uResCount > uResLen ) &&
            ( uRemaining > uTotalPktLen ) &&
@@ -4118,11 +4124,7 @@ WLANTL_GetFrames
       WDA_TLI_PROCESS_FRAME_LEN( pTLCb->tlBAPClient.vosPendingDataBuff,
                           usPktLen, uResLen, uTotalPktLen);
 
-      if (usPktLen > WLANTL_MAX_ALLOWED_LEN)
-      {
-          usPktLen = WLANTL_MAX_ALLOWED_LEN;
-          VOS_ASSERT(0);
-      }
+      VOS_ASSERT(usPktLen <= WLANTL_MAX_ALLOWED_LEN);
 
       if ( ( pTLCb->uResCount > (uResLen + WDA_TLI_MIN_RES_MF ) ) &&
            ( uRemaining > uTotalPktLen ))
@@ -4222,11 +4224,7 @@ WLANTL_GetFrames
         {
             WDA_TLI_PROCESS_FRAME_LEN( vosTempBuf, usPktLen, uResLen, uTotalPktLen);
 
-            if (usPktLen > WLANTL_MAX_ALLOWED_LEN)
-            {
-                usPktLen = WLANTL_MAX_ALLOWED_LEN;
-                VOS_ASSERT(0);
-            }
+            VOS_ASSERT( usPktLen <= WLANTL_MAX_ALLOWED_LEN);
 
             TLLOG4(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_LOW,
                       "WLAN TL:Resources needed by frame: %d", uResLen));
@@ -4374,11 +4372,7 @@ WLANTL_GetFrames
       {
         WDA_TLI_PROCESS_FRAME_LEN( vosTempBuf, usPktLen, uResLen, uTotalPktLen);
 
-        if (usPktLen > WLANTL_MAX_ALLOWED_LEN)
-        {
-            usPktLen = WLANTL_MAX_ALLOWED_LEN;
-            VOS_ASSERT(0);
-        }
+        VOS_ASSERT( usPktLen <= WLANTL_MAX_ALLOWED_LEN);
 
         TLLOG4(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_LOW,
                   "WLAN TL:Resources needed by frame: %d", uResLen));
@@ -4472,14 +4466,8 @@ WLANTL_GetFrames
   vos_pkt_walk_packet_chain( vosRoot, &vosDataBuff, 1/*true*/ );
 
   *pvosDataBuff = vosDataBuff;
-  if (pbUrgent)
-  {
-      *pbUrgent     = pTLCb->bUrgent;
-  }
-  else
-  {
-      VOS_ASSERT( pbUrgent );
-  }
+  VOS_ASSERT( pbUrgent );
+  *pbUrgent     = pTLCb->bUrgent;
   return ucResult;
 }/* WLANTL_GetFrames */
 
@@ -5158,6 +5146,9 @@ WLANTL_ProcessBAPFrame
     }
 
     /* Send packet to BAP client*/
+
+    VOS_ASSERT(pTLCb->tlBAPClient.pfnTlBAPRx != NULL);
+
     if ( VOS_STATUS_SUCCESS != WDA_DS_TrimRxPacketInfo( vosTempBuff ) )
     {
       TLLOGW(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_WARN,
@@ -5187,10 +5178,6 @@ WLANTL_ProcessBAPFrame
         pTLCb->tlBAPClient.pfnTlBAPRx( vos_get_global_context(VOS_MODULE_ID_TL,pTLCb),
                                        vosTempBuff,
                                        (WLANTL_BAPFrameEnumType)usType );
-    else
-    {
-        VOS_ASSERT(0);
-    }
 
     return VOS_TRUE;
   }
@@ -5499,11 +5486,6 @@ WLANTL_RxFrames
                "WLAN TL:Invalid parameter sent on WLANTL_RxFrames"));
     return VOS_STATUS_E_INVAL;
   }
-
- /*------------------------------------------------------------------------
-   Popolaute timestamp as the time when packet arrives
-   ---------------------------------------------------------------------- */
-   vosDataBuff->timestamp = vos_timer_get_system_ticks();
 
   /*------------------------------------------------------------------------
     Extract TL control block
@@ -6665,7 +6647,7 @@ WLANTL_STATxConn
    v_U8_t               extraHeadSpace = 0;
    v_U8_t               ucWDSEnabled = 0;
    v_U8_t               ucAC, ucACMask, i; 
-   v_U32_t              txFlag = HAL_TX_NO_ENCRYPTION_MASK;
+   v_U8_t               txFlag = HAL_TX_NO_ENCRYPTION_MASK;
   /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
   /*------------------------------------------------------------------------
@@ -7041,7 +7023,7 @@ WLANTL_STATxAuth
    v_U8_t                extraHeadSpace = 0;
    WLANTL_STAClientType *pStaClient = NULL;
    v_U8_t                ucWDSEnabled = 0;
-   v_U32_t               ucTxFlag   = 0;
+   v_U8_t                ucTxFlag   = 0; 
    v_U8_t                ucACMask, i; 
   /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
@@ -8731,12 +8713,9 @@ WLANTL_TxProcessMsg
       break;
 
   case WDA_DS_FINISH_ULA:
-    callbackContext = message->bodyptr;
-    callbackRoutine = message->callback;
-    if ( NULL != callbackRoutine )
-    {
-      callbackRoutine(callbackContext);
-    }
+    callbackContext = (void *)message->bodyval;
+    callbackRoutine = message->bodyptr;
+    callbackRoutine(callbackContext);
     break;
 
   case WLANTL_TX_SNAPSHOT:

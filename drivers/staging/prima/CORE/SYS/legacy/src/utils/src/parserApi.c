@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -39,6 +39,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 /*
+ * Airgo Networks, Inc proprietary. All rights reserved.
  * This file parserApi.cc contains the code for parsing
  * 802.11 messages.
  * Author:        Pierre Vandwalle
@@ -3431,7 +3432,7 @@ sirConvertBeaconFrame2Struct(tpAniSirGlobal       pMac,
     {
         //CCX Tx Power
         pBeaconStruct->ccxTxPwr.present = 1;
-        vos_mem_copy(&pBeaconStruct->ccxTxPwr,
+        palCopyMemory( pMac->hHdd, &pBeaconStruct->ccxTxPwr,
                                    &pBeacon->CCXTxmitPower,
                                    sizeof(tDot11fIECCXTxmitPower));
     }
@@ -4168,7 +4169,7 @@ tSirRetStatus PopulateDot11fCCXCckmOpaque( tpAniSirGlobal pMac,
         {
             pDot11f->present  = 1;
             pDot11f->num_data = pCCKMie->cckmIEdata[ idx + 1 ] - 4; // Dont include OUI
-            vos_mem_copy(pDot11f->data,
+            palCopyMemory( pMac->hHdd, pDot11f->data,
                            pCCKMie->cckmIEdata + idx + 2 + 4,    // EID, len, OUI
                            pCCKMie->cckmIEdata[ idx + 1 ] - 4 ); // Skip OUI
         }

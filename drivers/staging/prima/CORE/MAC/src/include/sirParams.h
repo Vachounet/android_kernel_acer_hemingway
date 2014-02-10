@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -37,6 +37,19 @@
  * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
+ */
+
+/*
+ * Airgo Networks, Inc proprietary. All rights reserved.
+ * This file sirParams.h contains the common parameter definitions, which
+ * are not dependent on threadX API. These can be used by all Firmware
+ * modules.
+ *
+ * Author:      Sandesh Goel
+ * Date:        04/13/2002
+ * History:-
+ * Date            Modified by    Modification Information
+ * --------------------------------------------------------------------
  */
 
 #ifndef __SIRPARAMS_H
@@ -95,8 +108,6 @@ typedef enum {
 #ifdef FEATURE_WLAN_BATCH_SCAN
    BATCH_SCAN = 30,
 #endif
-   FW_IN_TX_PATH = 31,
-   UPDATE_CHANNEL_LIST = 34,
 
    //MAX_FEATURE_SUPPORTED = 128
 } placeHolderInCapBitmap;
@@ -604,9 +615,9 @@ typedef struct sSirMbMsgP2p
 #define SIR_HAL_UPDATE_CHAN_LIST_REQ       (SIR_HAL_ITC_MSG_TYPES_BEGIN + 220)
 
 #define SIR_HAL_SET_MAX_TX_POWER_PER_BAND_REQ \
-        (SIR_HAL_ITC_MSG_TYPES_BEGIN + 221)
+        (SIR_HAL_ITC_MSG_TYPES_BEGIN + 223)
 #define SIR_HAL_SET_MAX_TX_POWER_PER_BAND_RSP \
-        (SIR_HAL_ITC_MSG_TYPES_BEGIN + 222)
+        (SIR_HAL_ITC_MSG_TYPES_BEGIN + 224)
 
 #define SIR_HAL_MSG_TYPES_END              (SIR_HAL_ITC_MSG_TYPES_BEGIN + 0xFF)
 // CFG message types

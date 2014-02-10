@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -48,6 +48,10 @@
 
   \brief Android WLAN Adapter Configuration functions
 
+               Copyright 2008 (c) Qualcomm, Incorporated.
+               All Rights Reserved.
+               Qualcomm Confidential and Proprietary.
+
   ==========================================================================*/
 
 /* $HEADER$ */
@@ -61,7 +65,7 @@
 #include <csrApi.h>
 
 //Number of items that can be configured
-#define MAX_CFG_INI_ITEMS   512
+#define MAX_CFG_INI_ITEMS   320
 
 // Defines for all of the things we read from the configuration (registry).
 
@@ -992,26 +996,6 @@ typedef enum
 #define CFG_TL_DELAYED_TRGR_FRM_INT_MAX                     (4294967295UL)
 #define CFG_TL_DELAYED_TRGR_FRM_INT_DEFAULT                 3000
 
-#define CFG_REORDER_TIME_BK_NAME                           "BkReorderTime"
-#define CFG_REORDER_TIME_BK_MIN                            30
-#define CFG_REORDER_TIME_BK_MAX                            1000
-#define CFG_REORDER_TIME_BK_DEFAULT                        300
-
-#define CFG_REORDER_TIME_BE_NAME                           "BeReorderTime"
-#define CFG_REORDER_TIME_BE_MIN                            30
-#define CFG_REORDER_TIME_BE_MAX                            1000
-#define CFG_REORDER_TIME_BE_DEFAULT                        300
-
-#define CFG_REORDER_TIME_VI_NAME                           "ViReorderTime"
-#define CFG_REORDER_TIME_VI_MIN                            30
-#define CFG_REORDER_TIME_VI_MAX                            1000
-#define CFG_REORDER_TIME_VI_DEFAULT                        300
-
-#define CFG_REORDER_TIME_VO_NAME                           "VoReorderTime"
-#define CFG_REORDER_TIME_VO_MIN                            30
-#define CFG_REORDER_TIME_VO_MAX                            1000
-#define CFG_REORDER_TIME_VO_DEFAULT                        40
-
 #if defined WLAN_FEATURE_VOWIFI
 #define CFG_RRM_ENABLE_NAME                              "gRrmEnable"
 #define CFG_RRM_ENABLE_MIN                               (0)
@@ -1241,11 +1225,9 @@ typedef enum
 #define CFG_NEIGHBOR_REASSOC_RSSI_THRESHOLD_DEFAULT           (83)
 
 #define CFG_NEIGHBOR_LOOKUP_RSSI_THRESHOLD_NAME      "gNeighborLookupThreshold"
-#define CFG_NEIGHBOR_LOOKUP_RSSI_THRESHOLD_MIN       (0)
+#define CFG_NEIGHBOR_LOOKUP_RSSI_THRESHOLD_MIN       (10)
 #define CFG_NEIGHBOR_LOOKUP_RSSI_THRESHOLD_MAX       (120)
-#define CFG_NEIGHBOR_LOOKUP_RSSI_THRESHOLD_DEFAULT   (0) /*A Zero value indicates the host to calculate
-                                                           Adaptive thresold based on the minimum
-                                                           supported data rate.*/
+#define CFG_NEIGHBOR_LOOKUP_RSSI_THRESHOLD_DEFAULT   (78)
 
 #define CFG_NEIGHBOR_SCAN_CHAN_LIST_NAME                      "gNeighborScanChannelList"
 #define CFG_NEIGHBOR_SCAN_CHAN_LIST_DEFAULT                   ""
@@ -1999,52 +1981,6 @@ This feature requires the dependent cfg.ini "gRoamPrefer5GHz" set to 1 */
 #define CFG_ENABLE_MEMORY_DEBUG_DEFAULT          (0)
 #endif
 
-#define CFG_OVERRIDE_COUNTRY_CODE                "gStaCountryCode"
-#define CFG_OVERRIDE_COUNTRY_CODE_DEFAULT        "000"
-
-/*Once the period expires the RSSI will be compared with Threshold
- * and if needed trigger events will be raised
- */
-#define CFG_ASD_PROBE_INTERVAL_NAME                     "gAsdProbeInterval"
-#define CFG_ASD_PROBE_INTERVAL_DEFAULT                  (50)
-#define CFG_ASD_PROBE_INTERVAL_MIN                      (10)
-#define CFG_ASD_PROBE_INTERVAL_MAX                      (100)
-
-/* RSSI Threshold used to trigger probing activity/selection process*/
-#define CFG_ASD_TRIGGER_THRESHOLD_NAME                  "gAsdTriggerThreshold"
-#define CFG_ASD_TRIGGER_THRESHOLD_DEFAULT               (-75)
-#define CFG_ASD_TRIGGER_THRESHOLD_MIN                   (-120)
-#define CFG_ASD_TRIGGER_THRESHOLD_MAX                   (0)
-
-/*RSSI Hysteresis Threshold for RSSI-RTT*/
-#define CFG_ASD_RTT_RSSI_HYST_THRESHOLD_NAME             "gAsdRTTRssiHystThreshold"
-#define CFG_ASD_RTT_RSSI_HYST_THRESHOLD_DEFAULT          (50)
-#define CFG_ASD_RTT_RSSI_HYST_THRESHOLD_MIN              (0)
-#define CFG_ASD_RTT_RSSI_HYST_THRESHOLD_MAX              (100)
-
-//Enable debug for remain on channel issues
-#define CFG_DEBUG_P2P_REMAIN_ON_CHANNEL_NAME    "gDebugP2pRemainOnChannel"
-#define CFG_DEBUG_P2P_REMAIN_ON_CHANNEL_DEFAULT ( 0 )
-#define CFG_DEBUG_P2P_REMAIN_ON_CHANNEL_MIN     ( 0 )
-#define CFG_DEBUG_P2P_REMAIN_ON_CHANNEL_MAX     ( 1 )
-
-#define CFG_CTS2S_DURING_BTC_SCO_NAME           "btcCTS2SduringSCO"
-#define CFG_CTS2S_DURING_BTC_SCO_DEFAULT        WNI_CFG_BTC_CTS2S_DURING_SCO_STADEF
-#define CFG_CTS2S_DURING_BTC_SCO_MIN            WNI_CFG_BTC_CTS2S_DURING_SCO_STAMIN
-#define CFG_CTS2S_DURING_BTC_SCO_MAX            WNI_CFG_BTC_CTS2S_DURING_SCO_STAMAX
-
-/*
- * Connection related log Enable/Disable.
- * 0x1 - Enable mgmt pkt logs (no probe req/rsp).
- * 0x2 - Enable EAPOL pkt logs.
- * 0x4 - Enable DHCP pkt logs.
- * 0x0 - Disable all the above connection related logs.
- */
-#define CFG_ENABLE_DEBUG_CONNECT_ISSUE             "gEnableDebugLog"
-#define CFG_ENABLE_DEBUG_CONNECT_ISSUE_MIN         (0)
-#define CFG_ENABLE_DEBUG_CONNECT_ISSUE_MAX         (0xFF)
-#define CFG_ENABLE_DEBUG_CONNECT_ISSUE_DEFAULT     (0)
-
 /*--------------------------------------------------------------------------- 
   Type declarations
   -------------------------------------------------------------------------*/ 
@@ -2293,10 +2229,6 @@ typedef struct
    v_U8_t                       WfqViWeight;
    v_U8_t                       WfqVoWeight;
    v_U32_t                      DelayedTriggerFrmInt;
-   v_U16_t                      BkReorderAgingTime;
-   v_U16_t                      BeReorderAgingTime;
-   v_U16_t                      ViReorderAgingTime;
-   v_U16_t                      VoReorderAgingTime;
 
    /* Wowl pattern */
    char                        wowlPattern[1024];         
@@ -2462,13 +2394,6 @@ typedef struct
 #ifdef MEMORY_DEBUG
    v_BOOL_t                    IsMemoryDebugSupportEnabled;
 #endif
-   char                        overrideCountryCode[4];
-   v_U32_t                     gAsdProbeInterval;
-   v_U32_t                     gAsdTriggerThreshold;
-   v_U32_t                     gAsdRTTRssiHystThreshold;
-   v_BOOL_t                    debugP2pRemainOnChannel;
-   v_U32_t                     cfgBtcCTS2SduringSCO;
-   v_U32_t                     gEnableDebugLog;
 } hdd_config_t;
 /*--------------------------------------------------------------------------- 
   Function declarations and documenation

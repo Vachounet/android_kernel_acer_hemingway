@@ -538,7 +538,7 @@ typedef struct
    void                            *nextCtrlBlk;
    wpt_packet                      *xfrFrame;  
    WLANDXE_DescType                *linkedDesc;
-   wpt_uint32                       linkedDescPhyAddr;
+   unsigned int                    linkedDescPhyAddr;
    wpt_uint32                       ctrlBlkOrder;
 #ifdef FEATURE_R33D
    wpt_uint32                       shadowBufferVa;
@@ -625,7 +625,7 @@ typedef struct
    WLANDXE_DescType               *descriptorAllocation;
 #endif
    WLANDXE_DescType               *DescBottomLoc;
-   wpt_uint32                      descBottomLocPhyAddr;
+   unsigned int                    descBottomLocPhyAddr;
    wpt_uint32                      numDesc;
    wpt_uint32                      numFreeDesc;
    wpt_uint32                      numRsvdDesc;
@@ -682,7 +682,6 @@ typedef struct
    wpt_boolean                     driverReloadInProcessing;
    wpt_boolean                     smsmToggled;
    wpt_timer                       rxResourceAvailableTimer;
-   wpt_timer                       dxeSSRTimer;
 } WLANDXE_CtrlBlkType;
 
 /*==========================================================================
