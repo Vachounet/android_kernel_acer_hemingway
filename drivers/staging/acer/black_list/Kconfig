@@ -1,0 +1,5 @@
+config ACER_MISC
+	bool "Acer Misc itme"
+	default n
+	help
+	  Acer Misc item

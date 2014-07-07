@@ -1,0 +1,744 @@
+/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/include/ "dsi_panel_innolux_1080p_video.dtsi"
+/include/ "msm8974-acer-leds.dtsi"
+/include/ "msm8974-acer-camera-sensor.dtsi"
+
+&soc {
+	serial@f991e000 {
+		status = "ok";
+	};
+
+	qcom,mdss_dsi_innolux_1080p_video {
+		status = "ok";
+		qcom,cont-splash-enabled;
+	};
+
+	qcom,hdmi_tx@fd922100 {
+		status = "ok";
+	};
+
+	spi@f9967000 {
+		ntrig_spi@0{
+			compatible = "ntrig,ntrig-spi";
+			reg = <0>;
+			spi-max-frequency = <10000000>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <61 0x2>;
+			vcc_spi-supply = <&pm8941_lvs1>;
+		};
+	};
+
+	i2c@f9923000 {
+		isl98607@29 {
+			compatible = "qcom,isl98607";
+			reg = <0x29>;
+			smps3a-supply = <&pm8941_s3>;
+		};
+	};
+
+	i2c@f9924000 {
+/*
+		cypress-ts@24 {
+			compatible = "cypress,cypress-ts";
+			reg = <0x24>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <77 0x2>;
+			vdd_ana-supply = <&pm8941_l18>;
+			vcc_i2c-supply = <&pm8941_lvs1>;
+			cypress,reset-gpio = <&msmgpio 60 0x00>;
+			cypress,irq-gpio = <&msmgpio 77 0x00>;
+			cypress,panel-coords = <0  0 1080 2016>;
+			cypress,display-coords = <0 0 720 1280>;
+			cypress,i2c-pull-up;
+		};
+*/
+
+		cypress_capsense@2c {
+			compatible = "cypress,capsense-key";
+			reg = <0x2c>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <73 0x2>;
+			vcc_i2c-supply = <&pm8941_lvs1>;
+			cypress,reset-gpio = <&msmgpio 13 0x00>;
+			cypress,irq-gpio = <&msmgpio 73 0x02>;
+		};
+	};
+
+	gen-vkeys {
+		compatible = "qcom,gen-vkeys";
+		label = "atmel_mxt_ts";
+		qcom,disp-maxx = <720>;
+		qcom,disp-maxy = <1280>;
+		qcom,panel-maxx = <760>;
+		qcom,panel-maxy = <1424>;
+		qcom,key-codes = <158 139 102 217>;
+	};
+
+	i2c@f9928000 {
+		pn544@28 {
+			compatible = "nxp,pn544";
+			reg = <0x28>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <59 0x1>;
+			nfc_vdd-supply = <&pm8941_s3>;
+			nfc_vsim-supply  = <&pm8941_l9>;
+			irq-gpio = <&msmgpio 59 0x00>;
+		};
+	};
+/*
+	i2c@f9967000 {
+		isa1200@48 {
+			status = "okay";
+			reg = <0x48>;
+			vcc_i2c-supply = <&pm8941_s3>;
+			compatible = "imagis,isa1200";
+			label = "vibrator";
+			imagis,chip-en;
+			imagis,smart-en;
+			imagis,need-pwm-clk;
+			imagis,ext-clk-en;
+			imagis,hap-en-gpio = <&msmgpio 86 0x00>;
+			imagis,max-timeout = <15000>;
+			imagis,pwm-div = <256>;
+			imagis,mode-ctrl = <2>;
+			imagis,regulator {
+				regulator-name = "vcc_i2c";
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-max-microamp = <9360>;
+			};
+		};
+	};
+*/
+
+	i2c@f9964000 {
+		sii8334@72 {
+			compatible = "qcom,mhl-sii8334";
+			reg = <0x72>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <86 0x8>;
+			mhl-intr-gpio = <&msmgpio 86 0>;
+			mhl-pwr-gpio = <&msmgpio 8 0>;
+			mhl-rst-gpio = <&msmgpio 85 0>;
+			avcc_12-supply = <&pm8941_l2>;
+			smps3a-supply = <&pm8941_s3>;
+			vdda-supply = <&pm8941_l12>;
+		};
+
+		as3668@42 {
+			compatible = "ams,as3668";
+			reg = <0x42>;
+			vbat_monitor_voltage_mV = <3000>;
+			pattern_start_source = <0>;        /*AS3668_PATTERN_START_SOURCE_SW*/
+			pwm_source = <0>;                  /*AS3668_PWM_SOURCE_INTERNAL*/
+			gpio_input_invert = <0>;
+			gpio_input_mode = <0>;             /*AS3668_GPIO_INPUT_MODE_ANALOG*/
+			gpio_mode = <0>;                   /*AS3668_GPIO_MODE_INPUT_ONLY*/
+			audio_input_pin = <1>;             /*AS3668_AUDIO_INPUT_CURR4*/
+			audio_pulldown_off = <0>;
+			audio_man_start = <0>;             /*AS3668_AUDIO_AUTO_PRECHARGE*/
+			audio_dis_start = <0>;             /*AS3668_AUDIO_INPUT_CAP_PRECHARGE*/
+			audio_adc_characteristic = <0>;
+			leds-names = "curr1", "red", "green", "blue";
+		};
+	};
+
+        i2c@f9966000 {
+                adp1660@30 {
+                        compatible = "qcom,flash-adp1660";
+                        reg = <0x30>;
+                        flash-en-gpio = <&msmgpio 94 0>;
+                        flash-tx-gpio = <&msmgpio 95 0>;
+                        flash-str-gpio = <&msmgpio 96 0>;
+                        flash-vio-supply = <&pm8941_lvs2>;
+                };
+        };
+
+	gpio_keys {
+		compatible = "gpio-keys";
+		input-name = "gpio-keys";
+
+		camera_snapshot {
+			label = "camera_snapshot";
+			gpios = <&pm8941_gpios 3 0x1>;
+			linux,input-type = <1>;
+			linux,code = <0x2fe>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+
+		camera_focus {
+			label = "camera_focus";
+			gpios = <&pm8941_gpios 4 0x1>;
+			linux,input-type = <1>;
+			linux,code = <0x210>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+
+		vol_up {
+			label = "volume_up";
+			gpios = <&pm8941_gpios 5 0x1>;
+			linux,input-type = <1>;
+			linux,code = <115>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+	};
+
+	sound {
+		qcom,model = "msm8974-taiko-cdp-snd-card";
+		qcom,ext-spk-amp-gpio = <&msmgpio 45 0x00>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <46 3>, <54 2>;
+		qcom,hs-dett-irq-gpio = <&msmgpio 46 0x00>;
+		qcom,hs-butt-dett-irq-gpio = <&msmgpio 54 0x00>;
+		qcom,hs-bias-gpio = <&msmgpio 58 0x00>;
+		qcom,hs-depop-gpio = <&msmgpio 53 0x00>;
+		qcom,hs-uart-gpio = <&msmgpio 28 0x00>;
+		qcom,hdmi-audio-rx;
+		qcom,us-euro-gpios = <&pm8941_gpios 20 0>;
+		qcom,cdc-micbias2-headset-only;
+	};
+
+	usb2_otg_sw: regulator-tpd4s214 {
+		compatible = "regulator-fixed";
+		regulator-name = "usb2_otg_sw";
+		gpio = <&pm8941_gpios 18 0>;
+		parent-supply = <&pm8941_boost>;
+		startup-delay-us = <17000>;
+		enable-active-high;
+	};
+
+	hsic_host: hsic@f9a00000 {
+		compatible = "qcom,hsic-host";
+		reg = <0xf9a00000 0x400>;
+		#address-cells = <0>;
+		interrupt-parent = <&hsic_host>;
+		interrupts = <0 1 2>;
+		#interrupt-cells = <1>;
+		interrupt-map-mask = <0xffffffff>;
+		interrupt-map = <0 &intc 0 136 0
+			1 &intc 0 148 0
+			2 &msmgpio 144 0x8>;
+		interrupt-names = "core_irq", "async_irq", "wakeup";
+		HSIC_VDDCX-supply = <&pm8841_s2>;
+		HSIC_GDSC-supply = <&gdsc_usb_hsic>;
+		hsic,strobe-gpio = <&msmgpio 144 0x00>;
+		hsic,data-gpio = <&msmgpio 145 0x00>;
+		hsic,resume-gpio = <&msmgpio 80 0x00>;
+		hsic,ignore-cal-pad-config;
+		hsic,strobe-pad-offset = <0x2050>;
+		hsic,data-pad-offset = <0x2054>;
+
+		qcom,msm-bus,name = "hsic";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<85 512 0 0>,
+				<85 512 40000 160000>;
+	};
+
+	wlan0: qca,wlan {
+		compatible = "qca,ar6004-hsic";
+		qcom,msm-bus,name = "wlan";
+		qcom,msm-bus,num-cases = <5>;
+		qcom,msm-bus,active-only = <0>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<85 512 0 0>,
+				<85 512 40000 160000>,
+				<85 512 40000 320000>,
+				<85 512 40000 480000>,
+				<85 512 40000 800000>;
+	};
+};
+
+&spmi_bus {
+	qcom,pm8941@1 {
+		qcom,leds@d800 {
+			status = "okay";
+			qcom,wled_0 {
+				label = "wled";
+				linux,name = "wled:backlight";
+				linux,default-trigger = "bkl-trigger";
+				qcom,cs-out-en;
+				qcom,op-fdbck = <1>;
+				qcom,default-state = "on";
+				qcom,max-current = <20>;
+				qcom,ctrl-delay-us = <0>;
+				qcom,boost-curr-lim = <6>;
+				qcom,cp-sel = <0>;
+				qcom,switch-freq = <2>;
+				qcom,ovp-val = <3>;
+				qcom,num-strings = <3>;
+				qcom,id = <0>;
+				qcom,cabc-en;
+			};
+		};
+
+		qcom,leds@d900 {
+			status = "disabled";
+		};
+
+		qcom,leds@da00 {
+			status = "disabled";
+		};
+
+		qcom,leds@db00 {
+			status = "disabled";
+		};
+
+		qcom,leds@dc00 {
+			status = "disabled";
+		};
+
+		qcom,leds@dd00 {
+			status = "disabled";
+		};
+
+		qcom,leds@de00 {
+			status = "disabled";
+		};
+
+		qcom,leds@df00 {
+			status = "disabled";
+		};
+
+		qcom,leds@e000 {
+			status = "disabled";
+		};
+
+		qcom,leds@e100 {
+			status = "disabled";
+		};
+	};
+};
+
+&sdcc1 {
+	status = "disabled";
+};
+
+&sdcc2 {
+	#address-cells = <0>;
+	interrupt-parent = <&sdcc2>;
+	interrupts = <0 1 2>;
+	#interrupt-cells = <1>;
+	interrupt-map-mask = <0xffffffff>;
+	interrupt-map = <0 &intc 0 125 0
+			1 &intc 0 220 0
+			2 &msmgpio 62 0x3>;
+	interrupt-names = "core_irq", "bam_irq", "status_irq";
+	cd-gpios = <&msmgpio 62 0x1>;
+	status = "disabled";
+};
+
+&sdhc_1 {
+	vdd-supply = <&pm8941_l20>;
+	vdd-io-supply = <&pm8941_s3>;
+
+	qcom,vdd-always-on;
+	qcom,vdd-lpm-sup;
+	qcom,vdd-voltage-level = <2950000 2950000>;
+	qcom,vdd-current-level = <800 500000>;
+
+	qcom,vdd-io-always-on;
+	qcom,vdd-io-voltage-level = <1800000 1800000>;
+	qcom,vdd-io-current-level = <250 154000>;
+
+	qcom,pad-pull-on = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
+	qcom,pad-pull-off = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
+	qcom,pad-drv-on = <0x4 0x4 0x4>; /* 10mA, 10mA, 10mA */
+	qcom,pad-drv-off = <0x0 0x0 0x0>; /* 2mA, 2mA, 2mA */
+
+	qcom,nonremovable;
+	status = "ok";
+};
+
+&sdhc_2 {
+	#address-cells = <0>;
+	interrupt-parent = <&sdhc_2>;
+	interrupts = <0 1 2>;
+	#interrupt-cells = <1>;
+	interrupt-map-mask = <0xffffffff>;
+	interrupt-map = <0 &intc 0 125 0
+			1 &intc 0 221 0
+			2 &msmgpio 62 0x3>;
+	interrupt-names = "hc_irq", "pwr_irq", "status_irq";
+	cd-gpios = <&msmgpio 62 0x1>;
+
+	vdd-supply = <&pm8941_l21>;
+	vdd-io-supply = <&pm8941_l13>;
+
+	qcom,vdd-voltage-level = <2950000 2950000>;
+	qcom,vdd-current-level = <9000 800000>;
+
+	qcom,vdd-io-voltage-level = <1800000 2950000>;
+	qcom,vdd-io-current-level = <6 22000>;
+
+	qcom,pad-pull-on = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
+	qcom,pad-pull-off = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
+	qcom,pad-drv-on = <0x4 0x4 0x4>; /* 10mA, 10mA, 10mA */
+	qcom,pad-drv-off = <0x0 0x0 0x0>; /* 2mA, 2mA, 2mA */
+	status = "ok";
+};
+
+/* Drive strength recommendations for clock line from hardware team is 10 mA.
+ * But since the driver has been been using the below values from the start
+ * without any problems, continue to use those.
+ */
+&sdcc1 {
+	qcom,pad-drv-on = <0x7 0x7 0x7>; /* 16mA, 16mA, 16mA */
+};
+
+&sdcc2 {
+	qcom,pad-drv-on = <0x7 0x4 0x4>; /* 16mA, 10mA, 10mA */
+};
+
+&sdhc_1 {
+	qcom,pad-drv-on = <0x7 0x7 0x7>; /* 16mA, 16mA, 16mA */
+};
+
+&sdhc_2 {
+	qcom,pad-drv-on = <0x7 0x4 0x4>; /* 16mA, 10mA, 10mA */
+};
+
+&uart7 {
+	status = "ok";
+	qcom,tx-gpio = <&msmgpio 41 0x00>;
+	qcom,rx-gpio = <&msmgpio 42 0x00>;
+	qcom,cts-gpio = <&msmgpio 43 0x00>;
+	qcom,rfr-gpio = <&msmgpio 44 0x00>;
+};
+
+&usb3 {
+	qcom,otg-capability;
+};
+
+&pm8941_gpios {
+	gpio@c000 { /* GPIO 1 */
+		qcom,master-en = <0>;
+	};
+
+	gpio@c100 { /* GPIO 2 */
+	};
+
+	gpio@c200 { /* GPIO 3 */
+		qcom,mode = <0>;
+		qcom,pull = <0>;
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <0>;
+		qcom,master-en = <0>;
+	};
+
+	gpio@c300 { /* GPIO 4 */
+		qcom,mode = <0>;
+		qcom,pull = <0>;
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <0>;
+		qcom,master-en = <0>;
+	};
+
+	gpio@c400 { /* GPIO 5 */
+		qcom,mode = <0>;
+		qcom,pull = <0>;
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <0>;
+	};
+
+	gpio@c500 { /* GPIO 6 */
+		qcom,master-en = <0>;
+	};
+
+	gpio@c600 { /* GPIO 7 */
+		qcom,master-en = <0>;
+	};
+
+	gpio@c700 { /* GPIO 8 */
+		qcom,master-en = <0>;
+	};
+
+	gpio@c800 { /* GPIO 9 */
+		qcom,master-en = <0>;
+	};
+
+	gpio@c900 { /* GPIO 10 */
+		qcom,master-en = <0>;
+	};
+
+	gpio@ca00 { /* GPIO 11 */
+		qcom,master-en = <0>;
+	};
+
+	gpio@cb00 { /* GPIO 12 */
+		qcom,master-en = <0>;
+	};
+
+	gpio@cc00 { /* GPIO 13 */
+		qcom,master-en = <0>;
+	};
+
+	gpio@cd00 { /* GPIO 14 */
+		qcom,master-en = <0>;
+	};
+
+	gpio@ce00 { /* GPIO 15 */
+		qcom,mode = <1>;
+		qcom,output-type = <0>;
+		qcom,pull = <5>;
+		qcom,vin-sel = <2>;
+		qcom,out-strength = <1>;
+		qcom,src-sel = <2>;
+		qcom,master-en = <1>;
+	};
+
+	gpio@cf00 { /* GPIO 16 */
+		qcom,mode = <1>;
+		qcom,output-type = <0>;
+		qcom,pull = <2>;
+		qcom,vin-sel = <2>;
+		qcom,out-strength = <2>;
+		qcom,src-sel = <2>;
+		qcom,master-en = <0>;
+	};
+
+	gpio@d000 { /* GPIO 17 */
+	};
+
+	gpio@d100 { /* GPIO 18 */
+		/* usb2_otg_sw regulator enable */
+		qcom,mode = <1>;		/* Digital output */
+		qcom,output-type = <0>;		/* CMOS logic */
+		qcom,invert = <0>; 		/* Output low initially */
+		qcom,vin-sel = <2>; 		/* PM8941 S3 = 1.8 V */
+		qcom,src-sel = <0>; 		/* Constant */
+		qcom,out-strength = <2>;	/* Medium drive strength */
+		qcom,master-en = <0>;		/* Disable GPIO */
+	};
+
+	gpio@d200 { /* GPIO 19 */
+		qcom,mode = <1>;		/* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;		/* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
+		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
+		qcom,out-strength = <2>;	/* QPNP_PIN_OUT_STRENGTH_MED */
+		qcom,src-sel = <0>;		/* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <1>;
+	};
+
+	gpio@d300 { /* GPIO 20 */
+		qcom,mode = <1>;		/* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;		/* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,invert = <0>; 		/* Output low initially */
+		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
+		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
+		qcom,out-strength = <2>;	/* QPNP_PIN_OUT_STRENGTH_MED */
+		qcom,src-sel = <0>;		/* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <0>;
+	};
+
+	gpio@d400 { /* GPIO 21 */
+	};
+
+	gpio@d500 { /* GPIO 22 */
+		qcom,master-en = <0>;
+	};
+
+	gpio@d600 { /* GPIO 23 */
+		qcom,master-en = <0>;
+	};
+
+	gpio@d700 { /* GPIO 24 */
+		qcom,master-en = <0>;
+	};
+
+	gpio@d800 { /* GPIO 25 */
+		qcom,master-en = <0>;
+	};
+
+	gpio@d900 { /* GPIO 26 */
+		qcom,master-en = <0>;
+	};
+
+	gpio@da00 { /* GPIO 27 */
+	};
+
+	gpio@db00 { /* GPIO 28 */
+	};
+
+	gpio@dc00 { /* GPIO 29 */
+		qcom,pull = <0>; /* set to default pull */
+		qcom,master-en = <0>;
+		qcom,vin-sel = <2>; /* select 1.8 V source */
+	};
+
+	gpio@dd00 { /* GPIO 30 */
+		qcom,master-en = <0>;
+	};
+
+	gpio@de00 { /* GPIO 31 */
+	};
+
+	gpio@df00 { /* GPIO 32 */
+		qcom,master-en = <0>;
+	};
+
+	gpio@e000 { /* GPIO 33 */
+		qcom,master-en = <0>;
+	};
+
+	gpio@e100 { /* GPIO 34 */
+		qcom,master-en = <0>;
+	};
+
+	gpio@e200 { /* GPIO 35 */
+		qcom,master-en = <0>;
+	};
+
+	gpio@e300 { /* GPIO 36 */
+		qcom,master-en = <0>;
+	};
+};
+
+&pm8941_mpps {
+
+	mpp@a000 { /* MPP 1 */
+		status = "disabled";
+	};
+
+	mpp@a100 { /* MPP 2 */
+	};
+
+	mpp@a200 { /* MPP 3 */
+	};
+
+	mpp@a300 { /* MPP 4 */
+		reg = <0xa300 0x100>;
+		qcom,mode = <4>; /* AIN */
+		qcom,pin-num = <4>;
+		qcom,invert = <1>;
+		qcom,ain-route = <3>; /*AMUX8 */
+		qcom,vin-sel = <2>; /* QPNP_PIN_VIN2*/
+		qcom,master-en = <1>;
+		qcom,src-sel = <0>; /* Function constant */
+	};
+
+	mpp@a400 { /* MPP 5 */
+		/* SPI_ETH config */
+		qcom,mode = <1>; /* DIG_OUT */
+		qcom,output-type = <0>; /* CMOS */
+		qcom,vin-sel = <2>; /* PM8941_S3 1.8V > 1.6V */
+		qcom,src-sel = <0>; /* CONSTANT */
+		qcom,master-en = <1>; /* ENABLE MPP */
+	};
+
+	mpp@a500 { /* MPP 6 */
+		/* SPI_ETH_RST config */
+		qcom,mode = <1>; /* DIG_OUT */
+		qcom,output-type = <0>; /* CMOS */
+		qcom,vin-sel = <2>; /* PM8941_S3 1.8V > 1.6V */
+		qcom,src-sel = <0>; /* CONSTANT */
+		qcom,master-en = <1>; /* ENABLE MPP */
+	};
+
+	mpp@a600 { /* MPP 7 */
+	};
+
+	mpp@a700 { /* MPP 8 */
+		qcom,master-en = <0>;
+	};
+};
+
+&pm8841_mpps {
+
+	mpp@a000 { /* MPP 1 */
+		qcom,master-en = <0>;
+	};
+
+	mpp@a100 { /* MPP 2 */
+		qcom,master-en = <0>;
+	};
+
+	mpp@a200 { /* MPP 3 */
+		qcom,master-en = <0>;
+	};
+
+	mpp@a300 { /* MPP 4 */
+		qcom,master-en = <0>;
+	};
+};
+
+/* CoreSight */
+&tpiu {
+	qcom,seta-gpios = <&msmgpio 31 0>,
+			  <&msmgpio 32 0>,
+			  <&msmgpio 33 0>,
+			  <&msmgpio 34 0>,
+			  <&msmgpio 35 0>,
+			  <&msmgpio 36 0>,
+			  <&msmgpio 37 0>,
+			  <&msmgpio 38 0>,
+			  <&msmgpio 39 0>,
+			  <&msmgpio 40 0>,
+			  <&msmgpio 41 0>,
+			  <&msmgpio 42 0>,
+			  <&msmgpio 43 0>,
+			  <&msmgpio 44 0>,
+			  <&msmgpio 45 0>,
+			  <&msmgpio 46 0>,
+			  <&msmgpio 47 0>,
+			  <&msmgpio 48 0>;
+	qcom,seta-gpios-func = <4 4 4 3 4 4 4 3 4 3 5 5 5 5 4 4 5 5>;
+	qcom,seta-gpios-drv =  <7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7>;
+	qcom,seta-gpios-pull = <0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0>;
+	qcom,seta-gpios-dir =  <2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2>;
+
+	qcom,setb-gpios = <&msmgpio 15 0>,
+			  <&msmgpio 16 0>,
+			  <&msmgpio 17 0>,
+			  <&msmgpio 18 0>,
+			  <&msmgpio 19 0>,
+			  <&msmgpio 20 0>,
+			  <&msmgpio 21 0>,
+			  <&msmgpio 22 0>,
+			  <&msmgpio 23 0>,
+			  <&msmgpio 24 0>,
+			  <&msmgpio 25 0>,
+			  <&msmgpio 26 0>,
+			  <&msmgpio 27 0>,
+			  <&msmgpio 28 0>,
+			  <&msmgpio 89 0>,
+			  <&msmgpio 90 0>,
+			  <&msmgpio 91 0>,
+			  <&msmgpio 92 0>;
+	qcom,setb-gpios-func = <2 2 2 2 5 5 5 5 6 6 6 7 7 5 2 3 3 3>;
+	qcom,setb-gpios-drv =  <7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7>;
+	qcom,setb-gpios-pull = <0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0>;
+	qcom,setb-gpios-dir =  <2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2>;
+};
+
+&slim_msm {
+	taiko_codec {
+		qcom,cdc-micbias1-ext-cap;
+		qcom,cdc-micbias3-ext-cap;
+		qcom,cdc-micbias4-ext-cap;
+
+		/* If boot isn't available, vph_pwr_vreg can be used instead */
+		cdc-vdd-spkdrv-supply = <&pm8941_boost>;
+		qcom,cdc-vdd-spkdrv-voltage = <5000000 5000000>;
+		qcom,cdc-vdd-spkdrv-current = <1250000>;
+
+		qcom,cdc-on-demand-supplies = "cdc-vdd-spkdrv";
+	};
+};

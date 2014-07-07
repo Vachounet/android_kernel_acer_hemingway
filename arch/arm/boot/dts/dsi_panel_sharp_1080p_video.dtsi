@@ -1,0 +1,62 @@
+/* Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&mdss_dsi {
+
+	qcom,mdss_dsi_sharp_1080p_video {
+		compatible = "qcom,mdss-dsi-panel";
+		label = "sharp 1080p video mode dsi panel";
+		status = "disable";
+		qcom,enable-p5v-gpio = <&msmgpio 0 0>;
+		qcom,enable-n5v-gpio = <&msmgpio 1 0>;
+		qcom,rst-gpio = <&pm8941_gpios 19 0>;
+		qcom,mdss-pan-res = <1080 1920>;
+		qcom,mdss-pan-bpp = <24>;
+		qcom,mdss-pan-porch-values = <50 10 100 4 2 4>;
+		qcom,mdss-pan-underflow-clr = <0xff>;
+		qcom,mdss-pan-bl-ctrl = "bl_ctrl_wled";
+		qcom,mdss-pan-bl-levels = <1 255>;
+		qcom,mdss-pan-dsi-mode = <0>;
+		qcom,mdss-pan-dsi-h-pulse-mode = <1>;
+		qcom,mdss-pan-dsi-h-power-stop = <0 0 0>;
+		qcom,mdss-pan-dsi-bllp-power-stop = <1 0>;
+		qcom,mdss-pan-dsi-traffic-mode = <2>;
+		qcom,mdss-pan-dsi-dst-format = <3>;
+		qcom,mdss-pan-dsi-vc = <0>;
+		qcom,mdss-pan-dsi-rgb-swap = <0>;
+		qcom,mdss-pan-dsi-data-lanes = <1 1 1 1>;
+		qcom,mdss-pan-dsi-t-clk = <0x3e 0x21>;
+		qcom,mdss-pan-dsi-stream = <0>;
+		qcom,mdss-pan-dsi-mdp-tr = <0x0>;
+		qcom,mdss-pan-dsi-dma-tr = <0x04>;
+		qcom,mdss-pan-frame-rate = <60>;
+		qcom,panel-phy-regulatorSettings = [03 01 01 00 20 00 01]; /* Regualotor settings */
+		qcom,panel-phy-timingSettings = [d0 32 22 00 60 66 26 35 3a 03 04 00];
+		qcom,panel-phy-strengthCtrl = [77 06];
+		qcom,panel-phy-bistCtrl = [00 00 b1 ff 00 00];             /* BIST Ctrl settings */
+		qcom,panel-phy-laneConfig = [ 00 c2 45 00 00 00 00 01 75   /* lane0 config  */
+																	00 c2 45 00 00 00 00 01 75   /* lane1 config  */
+																	00 c2 45 00 00 00 00 01 75   /* lane2 config  */
+																	00 c2 45 00 00 00 00 01 75   /* lane3 config  */
+																	00 02 45 00 00 00 00 01 97]; /* Clk ln config */
+		qcom,panel-on-cmds = [  15 01 00 00 01 02 b0 04    /* manufacturer */
+														05 01 00 00 01 02 00 00    /* unlock       */
+														05 01 00 00 01 02 00 00    /* unlock       */
+														15 01 00 00 01 02 d6 01    /* sequencer    */
+														39 01 00 00 01 03 51 0f ff /* brightness   */
+														15 01 00 00 01 02 53 04    /* control disp */
+														05 01 00 00 01 02 29 00    /* display on   */
+														05 01 00 00 01 02 11 00];  /* exit sleep   */
+		qcom,panel-off-cmds = [ 05 01 00 00 32 02 28 00    /* display off  */
+														05 01 00 00 78 02 10 00];  /* enter sleep  */
+	};
+};

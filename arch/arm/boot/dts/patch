@@ -1,0 +1,28 @@
+diff --git a/arch/arm/boot/dts/msm8974-acer-regulator.dtsi b/arch/arm/boot/dts/msm8974-acer-regulator.dtsi
+index b7f2667..0cacce8 100644
+--- a/arch/arm/boot/dts/msm8974-acer-regulator.dtsi
++++ b/arch/arm/boot/dts/msm8974-acer-regulator.dtsi
+@@ -150,6 +150,7 @@
+ 			regulator-max-microvolt = <7>;
+ 			qcom,use-voltage-floor-corner;
+ 			qcom,always-send-voltage;
++		};
+ 	};
+ 
+ 	rpm-regulator-smpa1 {
+diff --git a/arch/arm/boot/dts/msm8974-v1-acer.dtsi b/arch/arm/boot/dts/msm8974-v1-acer.dtsi
+index 629a662..95056e3 100644
+--- a/arch/arm/boot/dts/msm8974-v1-acer.dtsi
++++ b/arch/arm/boot/dts/msm8974-v1-acer.dtsi
+@@ -38,11 +38,6 @@
+ 	qcom,calibration-less-mode;
+ };
+ 
+-/* I2C clock frequency overrides */
+-&i2c_0 {
+-	qcom,i2c-src-freq = <19200000>;
+-};
+-
+ &i2c_2 {
+ 	qcom,i2c-src-freq = <19200000>;
+ };
