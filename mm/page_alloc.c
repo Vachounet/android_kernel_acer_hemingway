@@ -63,10 +63,6 @@
 #include <asm/tlbflush.h>
 #include <asm/div64.h>
 #include "internal.h"
-#if defined(CONFIG_ARCH_ACER_MSM8974)
-#include <../arch/arm/mach-msm/msm_watchdog.h>
-#endif
-
 
 #ifdef CONFIG_USE_PERCPU_NUMA_NODE_ID
 DEFINE_PER_CPU(int, numa_node);
@@ -1996,34 +1992,6 @@ static DEFINE_RATELIMIT_STATE(nopage_rs,
 		DEFAULT_RATELIMIT_INTERVAL,
 		DEFAULT_RATELIMIT_BURST);
 
-#ifdef CONFIG_ARCH_ACER_MSM8974
-static void dump_tasks(void)
-{
-	struct task_struct *p;
-	struct task_struct *task;
-
-	pr_info("[ pid ]   uid  total_vm      rss cpu oom_adj  name\n");
-	for_each_process(p) {
-		task = find_lock_task_mm(p);
-		if (!task) {
-			/*
-			 * This is a kthread or all of p's threads have already
-			 * detached their mm's.  There's no need to report
-			 * them; they can't be oom killed anyway.
-			 */
-			continue;
-		}
-
-		pr_info("[%5d] %5d  %8lu %8lu %3u     %3d  %s\n",
-			task->pid, task_uid(task),
-			task->mm->total_vm, get_mm_rss(task->mm),
-			task_cpu(task), task->signal->oom_adj, task->comm);
-		task_unlock(task);
-		pet_watchdog();
-	}
-}
-#endif
-
 void warn_alloc_failed(gfp_t gfp_mask, int order, const char *fmt, ...)
 {
 	unsigned int filter = SHOW_MEM_FILTER_NODES;
@@ -2062,12 +2030,8 @@ void warn_alloc_failed(gfp_t gfp_mask, int order, const char *fmt, ...)
 		current->comm, order, gfp_mask);
 
 	dump_stack();
-	if (!should_suppress_show_mem()) {
+	if (!should_suppress_show_mem())
 		show_mem(filter);
-#ifdef CONFIG_ARCH_ACER_MSM8974
-		dump_tasks();
-#endif
-	}
 }
 
 static inline int

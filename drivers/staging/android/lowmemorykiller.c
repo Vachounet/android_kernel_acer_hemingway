@@ -40,14 +40,6 @@
 #include <linux/mutex.h>
 #include <linux/delay.h>
 #include <linux/swap.h>
-#if defined(CONFIG_ARCH_ACER_MSM8974)
-#include <linux/memory.h>
-#include <linux/memory_hotplug.h>
-#include <linux/dcache.h>
-#include <linux/fs.h>
-#include <../../../fs/proc/internal.h>
-#include <../../../arch/arm/mach-msm/msm_watchdog.h>
-#endif
 
 #ifdef CONFIG_HIGHMEM
 #define _ZONE ZONE_HIGHMEM
@@ -233,72 +225,6 @@ void tune_lmk_param(int *other_free, int *other_file, struct shrink_control *sc)
 	}
 }
 
-#if defined(CONFIG_ARCH_ACER_MSM8974)
-static void show_meminfo(void)
-{
-	struct vmalloc_info vmi;
-	unsigned long free = global_page_state(NR_FREE_PAGES) << 2;
-	unsigned long active_file = global_page_state(NR_ACTIVE_FILE) << 2;
-	unsigned long inactive_file = global_page_state(NR_INACTIVE_FILE) << 2;
-	unsigned long shem = global_page_state(NR_SHMEM) << 2;
-	unsigned long mlock = global_page_state(NR_MLOCK) << 2;
-	unsigned long anon = (global_page_state(NR_ACTIVE_ANON) + global_page_state(NR_INACTIVE_ANON)) << 2;
-	unsigned long mapped = global_page_state(NR_FILE_MAPPED) << 2;
-	unsigned long slab_reclaimable = global_page_state(NR_SLAB_RECLAIMABLE) << 2;
-	unsigned long slab_unreclaimable = global_page_state(NR_SLAB_UNRECLAIMABLE) << 2;
-	unsigned long pagetables = global_page_state(NR_PAGETABLE) << 2;
-	unsigned long kernelstack = global_page_state(NR_KERNEL_STACK) * THREAD_SIZE / 1024;
-	unsigned long subtotal = free + active_file + inactive_file + shem + mlock + anon + mapped
-		                               + slab_reclaimable + slab_unreclaimable + pagetables + kernelstack;
-	get_vmalloc_info(&vmi);
-
-	printk(" free:%lu \n"
-		" active_file:%luK inactive_file:%luK shem:%luK mlock:%luK [cache]\n"
-		" anon:%luK mapped:%luK [PSS]\n"
-		" slab_reclaimable:%luK slab_unreclaimable:%luK\n"
-		" pagetables:%luK kernelstack:%luK\n"
-		" subtotal:%luK\n",
-		free, active_file, inactive_file, shem, mlock, anon, mapped, slab_reclaimable, slab_unreclaimable,
-		pagetables, kernelstack, subtotal
-		);
-}
-
-/**
- * dump_tasks - dump current memory state of all system tasks
- *
- * State information includes task's pid, uid, tgid, vm size, rss, cpu, oom_adj
- * value, oom_score_adj value, and name.
- *
- * Call with tasklist_lock read-locked.
- */
-static void dump_tasks(void)
-{
-	struct task_struct *p;
-	struct task_struct *task;
-
-	pr_info("[ pid ]   uid  total_vm      rss cpu oom_adj  name\n");
-	for_each_process(p) {
-		task = find_lock_task_mm(p);
-		if (!task) {
-			/*
-			 * This is a kthread or all of p's threads have already
-			 * detached their mm's.  There's no need to report
-			 * them; they can't be oom killed anyway.
-			 */
-			continue;
-		}
-
-		pr_info("[%5d] %5d  %8lu %8lu %3u     %3d  %s\n",
-			task->pid, task_uid(task),
-			task->mm->total_vm, get_mm_rss(task->mm),
-			task_cpu(task), task->signal->oom_adj, task->comm);
-		task_unlock(task);
-		pet_watchdog();
-	}
-}
-#endif
-
-
 static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 {
 	struct task_struct *tsk;
@@ -404,25 +330,10 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 			     p->pid, p->comm, oom_score_adj, tasksize);
 	}
 	if (selected) {
-#if defined(CONFIG_ARCH_ACER_MSM8974)
-		lowmem_print(1, "[%s] send sigkill to %d (%s), adj %d, size %dK, min_adj=%d,"
-			" free=%dK, file=%dK\n",
-			     current->comm, selected->pid, selected->comm,
-			     selected_oom_score_adj, selected_tasksize << 2, min_score_adj,
-			     other_free << 2, other_file << 2);
-#else
 		lowmem_print(1, "send sigkill to %d (%s), adj %d, size %d\n",
 			     selected->pid, selected->comm,
 			     selected_oom_score_adj, selected_tasksize);
-#endif
 		lowmem_deathpending_timeout = jiffies + HZ;
-#if defined(CONFIG_ARCH_ACER_MSM8974)
-		if (selected_oom_score_adj < 80)
-		{
-			show_meminfo();
-			dump_tasks();
-		}
-#endif
 		send_sig(SIGKILL, selected, 0);
 		set_tsk_thread_flag(selected, TIF_MEMDIE);
 		rem -= selected_tasksize;

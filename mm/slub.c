@@ -30,9 +30,6 @@
 #include <linux/fault-inject.h>
 #include <linux/stacktrace.h>
 #include <linux/prefetch.h>
-#ifdef CONFIG_ARCH_ACER_MSM8974
-#include <linux/oom.h>
-#endif
 
 #include <trace/events/kmem.h>
 
@@ -2092,41 +2089,6 @@ static inline unsigned long node_nr_objs(struct kmem_cache_node *n)
 #endif
 }
 
-#ifdef CONFIG_ARCH_ACER_MSM8974
-/**
- * dump_tasks - dump current memory state of all system tasks
- *
- * State information includes task's pid, uid, tgid, vm size, rss, cpu, oom_adj
- * value, oom_score_adj value, and name.
- *
- * Call with tasklist_lock read-locked.
- */
-static void dump_tasks(void)
-{
-	struct task_struct *p;
-	struct task_struct *task;
-
-	pr_info("[ pid ]   uid  total_vm      rss cpu oom_adj  name\n");
-	for_each_process(p) {
-		task = find_lock_task_mm(p);
-		if (!task) {
-			/*
-			 * This is a kthread or all of p's threads have already
-			 * detached their mm's.  There's no need to report
-			 * them; they can't be oom killed anyway.
-			 */
-			continue;
-		}
-
-		pr_info("[%5d] %5d  %8lu %8lu %3u     %3d  %s\n",
-			task->pid, task_uid(task),
-			task->mm->total_vm, get_mm_rss(task->mm),
-			task_cpu(task), task->signal->oom_adj, task->comm);
-		task_unlock(task);
-	}
-}
-#endif
-
 static noinline void
 slab_out_of_memory(struct kmem_cache *s, gfp_t gfpflags, int nid)
 {
@@ -2160,9 +2122,6 @@ slab_out_of_memory(struct kmem_cache *s, gfp_t gfpflags, int nid)
 			"  node %d: slabs: %ld, objs: %ld, free: %ld\n",
 			node, nr_slabs, nr_objs, nr_free);
 	}
-#ifdef CONFIG_ARCH_ACER_MSM8974
-	dump_tasks();
-#endif
 }
 
 static inline void *new_slab_objects(struct kmem_cache *s, gfp_t flags,

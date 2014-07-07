@@ -36,9 +36,6 @@
 #include <linux/ftrace.h>
 #include <linux/ratelimit.h>
 
-#ifdef CONFIG_ARCH_ACER_MSM8974
-#include <../arch/arm/mach-msm/msm_watchdog.h>
-#endif
 #define CREATE_TRACE_POINTS
 #include <trace/events/oom.h>
 
@@ -431,9 +428,6 @@ static void dump_header(struct task_struct *p, gfp_t gfp_mask, int order,
 		current->signal->oom_score_adj);
 	cpuset_print_task_mems_allowed(current);
 	task_unlock(current);
-#ifdef CONFIG_ARCH_ACER_MSM8974
-	pet_watchdog();
-#endif
 	dump_stack();
 	mem_cgroup_print_oom_info(memcg, p);
 	show_mem(SHOW_MEM_FILTER_NODES);

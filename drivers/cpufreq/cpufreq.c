@@ -1523,11 +1523,6 @@ int __cpufreq_driver_target(struct cpufreq_policy *policy,
 	if (cpu_online(policy->cpu) && cpufreq_driver->target)
 		retval = cpufreq_driver->target(policy, target_freq, relation);
 
-#ifdef CONFIG_ARCH_ACER_MSM8974
-	if (cpu_online(policy->cpu) && cpufreq_driver->get)
-		policy->cur = cpufreq_driver->get(policy->cpu);
-#endif
-
 	return retval;
 }
 EXPORT_SYMBOL_GPL(__cpufreq_driver_target);
