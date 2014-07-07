@@ -279,9 +279,6 @@ struct qpnp_bms_chip {
 	bool				battery_removed;
 	struct bms_irq			sw_cc_thr_irq;
 	struct bms_irq			ocv_thr_irq;
-#ifdef CONFIG_MACH_ACER_A12
-	struct delayed_work		energy_calculate_delayed_work;
-#endif
 };
 
 static struct of_device_id qpnp_bms_match_table[] = {
@@ -784,7 +781,6 @@ static bool is_battery_present(struct qpnp_bms_chip *chip)
 			get_battery_voltage(&volt);
 			/* Double check battery voltage */
 			if (volt/1000 > 2800) {
-				pr_info("vbat=%dmV\n", volt/1000);
 				return true;
 			}
 		}
@@ -2178,13 +2174,6 @@ static void configure_soc_wakeup(struct qpnp_bms_chip *chip,
 			chip->base + BMS1_SW_CC_THR0, 5);
 	qpnp_write_wrapper(chip, (u8 *)&ocv_raw,
 			chip->base + BMS1_OCV_THR0, 2);
-
-	pr_debug("current sw_cc_raw = 0x%llx, current ocv = 0x%hx\n",
-			current_shdw_cc_raw, (uint16_t)current_ocv_raw);
-	pr_debug("target_cc_uah = %lld, raw64 = 0x%llx, raw 36 = 0x%llx, ocv_raw = 0x%hx\n",
-			target_cc_uah,
-			(uint64_t)cc_raw_64, cc_raw,
-			(uint16_t)ocv_raw);
 }
 
 #ifdef CONFIG_MACH_ACER_A12
@@ -2431,49 +2420,6 @@ static void calculate_soc_work(struct work_struct *work)
 				calculate_soc_delayed_work.work);
 	int soc = recalculate_soc(chip);
 
-#ifdef CONFIG_MACH_ACER_A12
-	int volt = 0, amp = 0;
-	struct qpnp_vadc_result batt_temp;
-	get_battery_voltage(&volt);
-	get_battery_current(chip, &amp);
-	qpnp_vadc_read(LR_MUX1_BATT_THERM, &batt_temp);
-	pr_info("SoC=%d%% Volt=%dmV Amp=%dmA Temp=%d\n",
-		soc, volt/1000, amp/1000, (int)batt_temp.physical);
-	/* Show CPU Temperature */
-	{
-		struct tsens_device tsens_dev;
-		unsigned long temp0 = 0, temp5 = 0, temp9 = 0;
-		tsens_dev.sensor_num = 0;
-		tsens_get_temp(&tsens_dev, &temp0);
-		tsens_dev.sensor_num = 5;
-		tsens_get_temp(&tsens_dev, &temp5);
-		tsens_dev.sensor_num = 9;
-		tsens_get_temp(&tsens_dev, &temp9);
-		pr_info("Sensor0(Main)=%d Sensor5(CPU0)=%d Sensor9(GPU)=%d\n",
-			(int)temp0, (int)temp5, (int)temp9);
-	}
-	/* Show CPU frequency */
-	{
-		struct cpufreq_policy cpu_policy;
-		int ret = 0;
-		ret = cpufreq_get_policy(&cpu_policy, 0);
-		if (ret >= 0)
-			pr_info("CPU0: cur=%dmHz max=%dmHz gov=%s\n",
-				cpu_policy.cur/1000, cpu_policy.max/1000, cpu_policy.governor->name);
-		ret = cpufreq_get_policy(&cpu_policy, 1);
-		if (ret >= 0)
-			pr_info("CPU1: cur=%dmHz max=%dmHz gov=%s\n",
-				cpu_policy.cur/1000, cpu_policy.max/1000, cpu_policy.governor->name);
-		ret = cpufreq_get_policy(&cpu_policy, 2);
-		if (ret >= 0)
-			pr_info("CPU2: cur=%dmHz max=%dmHz gov=%s\n",
-				cpu_policy.cur/1000, cpu_policy.max/1000, cpu_policy.governor->name);
-		ret = cpufreq_get_policy(&cpu_policy, 3);
-		if (ret >= 0)
-			pr_info("CPU3: cur=%dmHz max=%dmHz gov=%s\n",
-				cpu_policy.cur/1000, cpu_policy.max/1000, cpu_policy.governor->name);
-	}
-#endif
 	if (soc < chip->low_soc_calc_threshold
 			|| wake_lock_active(&chip->low_voltage_wake_lock))
 		schedule_delayed_work(&chip->calculate_soc_delayed_work,
@@ -3195,52 +3141,6 @@ static int get_prop_bms_capacity(struct qpnp_bms_chip *chip)
 {
 	return report_state_of_charge(chip);
 }
-
-#ifdef CONFIG_MACH_ACER_A12
-static bool power_enable = false;
-module_param(power_enable, bool, 0644);
-
-static int energy_calc_interval = 1000;
-module_param(energy_calc_interval, int, 0644);
-
-#define ENERGY_CALC_SAMPLES 5
-static int energy_samples[ENERGY_CALC_SAMPLES];
-static int energy_sum = 0;
-extern int bms_energy;
-static void energy_calculate_work(struct work_struct *work)
-{
-	struct qpnp_bms_chip *chip = container_of(work,
-				struct qpnp_bms_chip, energy_calculate_delayed_work.work);
-
-	if (power_enable) {
-		int i;
-		int volt = 0, amp = 0, watt = 0, energy = 0;
-		struct tsens_device tsens_dev;
-		unsigned long temp = 0;
-
-		tsens_dev.sensor_num = 5;
-		tsens_get_temp(&tsens_dev, &temp);
-
-		get_battery_current(chip, &amp);
-		get_battery_voltage(&volt);
-		watt = ((amp/10000)*(volt/10000))/10;
-		energy = (int)temp * watt/100;
-		if (energy_sum == 0) {
-			for (i = 0; i < ENERGY_CALC_SAMPLES; i++)
-				energy_samples[i] = energy;
-			energy_sum = energy * ENERGY_CALC_SAMPLES;
-		}
-		energy_sum = energy_sum + energy - energy_samples[0];
-		bms_energy = DIV_ROUND_CLOSEST(energy_sum, ENERGY_CALC_SAMPLES);
-
-		for (i = 0; i < ENERGY_CALC_SAMPLES-1; i++)
-			energy_samples[i] = energy_samples[i+1];
-		energy_samples[ENERGY_CALC_SAMPLES-1] = energy;
-	}
-	schedule_delayed_work(&chip->energy_calculate_delayed_work,
-				msecs_to_jiffies(energy_calc_interval));
-}
-#endif
 
 static void qpnp_bms_external_power_changed(struct power_supply *psy)
 {
@@ -3990,10 +3890,6 @@ static int __devinit qpnp_bms_probe(struct spmi_device *spmi)
 			"qpnp_cv_lock");
 	INIT_DELAYED_WORK(&chip->calculate_soc_delayed_work,
 			calculate_soc_work);
-#ifdef CONFIG_MACH_ACER_A12
-	INIT_DELAYED_WORK(&chip->energy_calculate_delayed_work,
-			energy_calculate_work);
-#endif
 	INIT_WORK(&chip->recalc_work, recalculate_work);
 	INIT_WORK(&chip->batfet_open_work, batfet_open_work);
 
@@ -4070,10 +3966,6 @@ static int __devinit qpnp_bms_probe(struct spmi_device *spmi)
 		pr_err("error requesting bms irqs, rc = %d\n", rc);
 		goto unregister_dc;
 	}
-#ifdef CONFIG_MACH_ACER_A12
-	schedule_delayed_work(&chip->energy_calculate_delayed_work,
-				msecs_to_jiffies(energy_calc_interval));
-#endif
 
 	pr_info("probe success: soc =%d vbatt = %d ocv = %d r_sense_uohm = %u warm_reset = %d\n",
 			get_prop_bms_capacity(chip), vbatt, chip->last_ocv_uv,

@@ -1013,8 +1013,4 @@ config SECURE_TOUCH
 
 	  If unsure, say N.
 
-config ACER_INPUT
-        default n
-        bool "acer input simulator device support" if EXPERT
-
 endif

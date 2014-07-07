@@ -597,9 +597,6 @@ void clean_woken_by_pwr_key(void)
 
 static void qpnp_show_resume_irq(uint8_t slave_id, uint8_t per_id, uint8_t irq_id)
 {
-	pr_warning("spec slave = %u per = %u irq = %u\n",
-					slave_id, per_id, irq_id);
-
 	if(slave_id == SID_PM8941 && per_id == PID_PON) {
 		if(!woken_by_pwr_key)
 			woken_by_pwr_key = 1;
