@@ -1,0 +1,24 @@
+## GCC 4.7 Linaro
+CUR_TC=/home/shreps/tmp/acer/vache/hemingway/android_prebuilt_toolchains/arm-linux-androideabi-4.8/bin/arm-linux-androideabi-
+
+### compile kernel
+ARCH=arm CROSS_COMPILE=${CUR_TC}arm-eabi- make -j12
+
+echo "checking for compiled kernel..."
+if [ -f arch/arm/boot/zImage ]
+then
+
+echo "generating device tree..."
+./dtbTool -o ../final_files/dt.img -s 2048 -p ./scripts/dtc/ ./arch/arm/boot/
+
+### copy zImage
+cp arch/arm/boot/zImage zImage
+/home/shreps/tmp/acer/vache/hemingway/android_prebuilt_toolchains/arm-linux-androideabi-4.7/bin/arm-linux-androideabi-strip --strip-unneeded drivers/staging/prima/wlan.ko
+/home/shreps/tmp/acer/vache/hemingway/android_prebuilt_toolchains/arm-linux-androideabi-4.7/bin/arm-linux-androideabi-strip --strip-unneeded drivers/char/adsprpc.ko
+
+cp drivers/staging/prima/wlan.ko wlan.ko
+cp drivers/char/adsprpc.ko adsprpc.ko
+
+echo "DONE"
+
+fi
