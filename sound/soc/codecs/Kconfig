@@ -469,3 +469,9 @@ config ACER_HEADSET
 config ACER_HEADSET_BUTT
 	tristate "ACER Headset Button detection driver"
 	default n
+
+config SOUND_CONTROL_HAX_3_GPL
+	tristate "new wcd93xx sound control hax"
+	default y
+	help
+	  FauxSound WCD93xx chipset sound control hacks 3.0 for deeper hax
