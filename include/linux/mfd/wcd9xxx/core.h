@@ -160,8 +160,6 @@ struct wcd9xxx {
 	struct slim_device *slim_slave;
 	struct mutex io_lock;
 	struct mutex xfer_lock;
-	struct mutex irq_lock;
- 	struct mutex nested_irq_lock;
 	u8 version;
 
 	int reset_gpio;
@@ -183,12 +181,6 @@ struct wcd9xxx {
 
 	u16 id_minor;
 	u16 id_major;
-
-	unsigned int irq_base;
- 	unsigned int irq;
- 	u8 irq_masks_cur[WCD9XXX_NUM_IRQ_REGS];
- 	u8 irq_masks_cache[WCD9XXX_NUM_IRQ_REGS];
- 	bool irq_level_high[WCD9XXX_MAX_NUM_IRQS];
 
 	/* Slimbus or I2S port */
 	u32 num_rx_port;
