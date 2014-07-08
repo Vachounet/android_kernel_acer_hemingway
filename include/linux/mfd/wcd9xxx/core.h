@@ -18,7 +18,6 @@
 #include <linux/pm_qos.h>
 #include <linux/platform_device.h>
 #include <linux/of_irq.h>
-#include <linux/mfd/wcd9xxx/core-resource.h>
 
 #define WCD9XXX_NUM_IRQ_REGS 4
 
@@ -197,8 +196,6 @@ struct wcd9xxx {
 
 	u32 num_of_supplies;
 	struct regulator_bulk_data *supplies;
-
-	struct wcd9xxx_core_resource core_res;
 
 	enum wcd9xxx_pm_state pm_state;
 	struct mutex pm_lock;
