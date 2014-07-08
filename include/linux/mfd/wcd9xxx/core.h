@@ -18,7 +18,6 @@
 #include <linux/pm_qos.h>
 #include <linux/platform_device.h>
 #include <linux/of_irq.h>
-#include <linux/mfd/wcd9xxx/core-resource.h>
 
 #define WCD9XXX_NUM_IRQ_REGS 4
 
