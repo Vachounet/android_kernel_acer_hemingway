@@ -33,6 +33,10 @@
 #include "../../arch/arm/mach-msm/acer_hw_version.h"
 #endif
 
+#ifdef CONFIG_FORCE_FAST_CHARGE
+#include <linux/fastchg.h>
+#endif
+
 /* Interrupt offsets */
 #define INT_RT_STS(base)			(base + 0x10)
 #define INT_SET_TYPE(base)			(base + 0x11)
@@ -613,11 +617,41 @@ qpnp_chg_idcmax_set(struct qpnp_chg_chip *chip, int mA)
 	int rc = 0;
 	u8 dc = 0;
 
+#ifdef CONFIG_FORCE_FAST_CHARGE
+	int custom_ma = mA;
+#endif	
+
 	if (mA < QPNP_CHG_I_MAX_MIN_100
 			|| mA > QPNP_CHG_I_MAX_MAX_MA) {
 		pr_err("bad mA=%d asked to set\n", mA);
 		return -EINVAL;
 	}
+	
+	#ifdef CONFIG_FORCE_FAST_CHARGE
+	if (force_fast_charge == 1) {
+		custom_ma = FAST_CHARGE_1200;
+	} else if (force_fast_charge == 2) {
+		switch (fast_charge_level) {
+			case FAST_CHARGE_500:
+				custom_ma = FAST_CHARGE_500;
+				break;
+			case FAST_CHARGE_900:
+				custom_ma = FAST_CHARGE_900;
+				break;
+			case FAST_CHARGE_1200:
+				custom_ma = FAST_CHARGE_1200;
+				break;
+			case FAST_CHARGE_1500:
+				custom_ma = FAST_CHARGE_1500;
+				break;
+			case FAST_CHARGE_2000:
+				custom_ma = FAST_CHARGE_2000;
+				break;
+			default:
+				break;
+		}
+
+	}	
 
 	if (mA == QPNP_CHG_I_MAX_MIN_100) {
 		dc = 0x00;
@@ -631,7 +665,14 @@ qpnp_chg_idcmax_set(struct qpnp_chg_chip *chip, int mA)
 			chip->dc_chgpth_base + CHGR_I_MAX_REG, 1);
 	}
 
+#ifdef CONFIG_FORCE_FAST_CHARGE
+	dc = custom_ma / QPNP_CHG_I_MAXSTEP_MA;
+	pr_debug("current=%d setting 0x%x\n", custom_ma, dc);
+#else
 	dc = mA / QPNP_CHG_I_MAXSTEP_MA;
+	pr_debug("current=%d setting 0x%x\n", mA, dc);
+#endif	
+	
 
 	pr_debug("current=%d setting 0x%x\n", mA, dc);
 	rc = qpnp_chg_write(chip, &dc,
