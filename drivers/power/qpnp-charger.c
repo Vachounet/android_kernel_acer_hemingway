@@ -617,9 +617,42 @@ qpnp_chg_idcmax_set(struct qpnp_chg_chip *chip, int mA)
 	int rc = 0;
 	u8 dc = 0;
 
+	if (mA < QPNP_CHG_I_MAX_MIN_100
+			|| mA > QPNP_CHG_I_MAX_MAX_MA) {
+		pr_err("bad mA=%d asked to set\n", mA);
+		return -EINVAL;
+	}
+	
+	if (mA == QPNP_CHG_I_MAX_MIN_100) {
+		dc = 0x00;
+		pr_debug("current=%d setting %02x\n", mA, dc);
+		return qpnp_chg_write(chip, &dc,
+			chip->dc_chgpth_base + CHGR_I_MAX_REG, 1);
+	} else if (mA == QPNP_CHG_I_MAX_MIN_150) {
+		dc = 0x01;
+		pr_debug("current=%d setting %02x\n", mA, dc);
+		return qpnp_chg_write(chip, &dc,
+			chip->dc_chgpth_base + CHGR_I_MAX_REG, 1);
+	}
+
+	dc = mA / QPNP_CHG_I_MAXSTEP_MA;
+
+	pr_debug("current=%d setting 0x%x\n", mA, dc);
+	rc = qpnp_chg_write(chip, &dc,
+		chip->dc_chgpth_base + CHGR_I_MAX_REG, 1);
+
+	return rc;
+}
+
+static int
+qpnp_chg_iusbmax_set(struct qpnp_chg_chip *chip, int mA)
+{
+	int rc = 0;
+	u8 usb_reg = 0, temp = 8;
+	
 #ifdef CONFIG_FORCE_FAST_CHARGE
 	int custom_ma = mA;
-#endif	
+#endif		
 
 	if (mA < QPNP_CHG_I_MAX_MIN_100
 			|| mA > QPNP_CHG_I_MAX_MAX_MA) {
@@ -651,47 +684,7 @@ qpnp_chg_idcmax_set(struct qpnp_chg_chip *chip, int mA)
 				break;
 		}
 	}	
-#endif
-	
-	if (mA == QPNP_CHG_I_MAX_MIN_100) {
-		dc = 0x00;
-		pr_debug("current=%d setting %02x\n", mA, dc);
-		return qpnp_chg_write(chip, &dc,
-			chip->dc_chgpth_base + CHGR_I_MAX_REG, 1);
-	} else if (mA == QPNP_CHG_I_MAX_MIN_150) {
-		dc = 0x01;
-		pr_debug("current=%d setting %02x\n", mA, dc);
-		return qpnp_chg_write(chip, &dc,
-			chip->dc_chgpth_base + CHGR_I_MAX_REG, 1);
-	}
-
-#ifdef CONFIG_FORCE_FAST_CHARGE
-	dc = custom_ma / QPNP_CHG_I_MAXSTEP_MA;
-	pr_debug("current=%d setting 0x%x\n", custom_ma, dc);
-#else
-	dc = mA / QPNP_CHG_I_MAXSTEP_MA;
-	pr_debug("current=%d setting 0x%x\n", mA, dc);
 #endif	
-	
-
-	pr_debug("current=%d setting 0x%x\n", mA, dc);
-	rc = qpnp_chg_write(chip, &dc,
-		chip->dc_chgpth_base + CHGR_I_MAX_REG, 1);
-
-	return rc;
-}
-
-static int
-qpnp_chg_iusbmax_set(struct qpnp_chg_chip *chip, int mA)
-{
-	int rc = 0;
-	u8 usb_reg = 0, temp = 8;
-
-	if (mA < QPNP_CHG_I_MAX_MIN_100
-			|| mA > QPNP_CHG_I_MAX_MAX_MA) {
-		pr_err("bad mA=%d asked to set\n", mA);
-		return -EINVAL;
-	}
 
 	if (mA == QPNP_CHG_I_MAX_MIN_100) {
 		usb_reg = 0x00;
@@ -709,7 +702,13 @@ qpnp_chg_iusbmax_set(struct qpnp_chg_chip *chip, int mA)
 	if (chip->maxinput_usb_ma)
 		mA = (chip->maxinput_usb_ma) <= mA ? chip->maxinput_usb_ma : mA;
 
+#ifdef CONFIG_FORCE_FAST_CHARGE
+	usb_reg = custom_ma / QPNP_CHG_I_MAXSTEP_MA;
+	pr_info("current=%d setting 0x%x\n", custom_ma, usb_reg);
+#else
 	usb_reg = mA / QPNP_CHG_I_MAXSTEP_MA;
+	pr_info("current=%d setting 0x%x\n", mA, usb_reg);
+#endif			
 
 	if (chip->flags & CHG_FLAGS_VCP_WA) {
 		temp = 0xA5;
@@ -720,7 +719,7 @@ qpnp_chg_iusbmax_set(struct qpnp_chg_chip *chip, int mA)
 			0x0C, 0x0C, 1);
 	}
 
-	pr_info("current=%d setting 0x%x\n", mA, usb_reg);
+	//pr_info("current=%d setting 0x%x\n", mA, usb_reg);
 	rc = qpnp_chg_write(chip, &usb_reg,
 		chip->usb_chgpth_base + CHGR_I_MAX_REG, 1);
 
