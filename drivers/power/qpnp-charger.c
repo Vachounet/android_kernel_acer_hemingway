@@ -627,7 +627,7 @@ qpnp_chg_idcmax_set(struct qpnp_chg_chip *chip, int mA)
 		return -EINVAL;
 	}
 	
-	#ifdef CONFIG_FORCE_FAST_CHARGE
+#ifdef CONFIG_FORCE_FAST_CHARGE
 	if (force_fast_charge == 1) {
 		custom_ma = FAST_CHARGE_1200;
 	} else if (force_fast_charge == 2) {
@@ -650,9 +650,9 @@ qpnp_chg_idcmax_set(struct qpnp_chg_chip *chip, int mA)
 			default:
 				break;
 		}
-
 	}	
-
+#endif
+	
 	if (mA == QPNP_CHG_I_MAX_MIN_100) {
 		dc = 0x00;
 		pr_debug("current=%d setting %02x\n", mA, dc);
