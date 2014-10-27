@@ -1,5 +1,5 @@
-#ifndef _LINUX_MSM_AUDIO_ACDB_H
-#define _LINUX_MSM_AUDIO_ACDB_H
+#ifndef __MSM_AUDIO_ACDB_H
+#define __MSM_AUDIO_ACDB_H
 
 #include <linux/msm_audio.h>
 
@@ -39,26 +39,10 @@
 			(AUDIO_MAX_COMMON_IOCTL_NUM+16), unsigned)
 #define AUDIO_SET_AFE_RX_CAL		_IOW(AUDIO_IOCTL_MAGIC, \
 			(AUDIO_MAX_COMMON_IOCTL_NUM+17), unsigned)
-#define AUDIO_SET_VOCPROC_COL_CAL	_IOW(AUDIO_IOCTL_MAGIC, \
-			(AUDIO_MAX_COMMON_IOCTL_NUM+18), unsigned)
-#define AUDIO_SET_VOCSTRM_COL_CAL	_IOW(AUDIO_IOCTL_MAGIC, \
-			(AUDIO_MAX_COMMON_IOCTL_NUM+19), unsigned)
-#define AUDIO_SET_VOCVOL_COL_CAL	_IOW(AUDIO_IOCTL_MAGIC, \
-			(AUDIO_MAX_COMMON_IOCTL_NUM+20), unsigned)
-#define AUDIO_SET_VOCPROC_DEV_CFG_CAL	_IOW(AUDIO_IOCTL_MAGIC, \
-			(AUDIO_MAX_COMMON_IOCTL_NUM+21), unsigned)
-#define AUDIO_SET_LSM_CAL		_IOW(AUDIO_IOCTL_MAGIC, \
-			(AUDIO_MAX_COMMON_IOCTL_NUM+22), unsigned)
-#define AUDIO_SET_ADM_CUSTOM_TOPOLOGY	_IOW(AUDIO_IOCTL_MAGIC, \
-			(AUDIO_MAX_COMMON_IOCTL_NUM+23), unsigned)
-#define AUDIO_SET_ASM_CUSTOM_TOPOLOGY	_IOW(AUDIO_IOCTL_MAGIC, \
-			(AUDIO_MAX_COMMON_IOCTL_NUM+24), unsigned)
-#define AUDIO_SET_SPEAKER_PROT _IOW(AUDIO_IOCTL_MAGIC, 25, \
-		struct msm_spk_prot_cfg)
-#define AUDIO_GET_SPEAKER_PROT _IOR(AUDIO_IOCTL_MAGIC, 26, \
-		struct msm_spk_prot_status)
-#define AUDIO_SET_AANC_CAL		_IOW(AUDIO_IOCTL_MAGIC, \
-			(AUDIO_MAX_COMMON_IOCTL_NUM+27), unsigned)
+#define AUDIO_SET_HW_DELAY_RX	_IOW(AUDIO_IOCTL_MAGIC, \
+			(AUDIO_MAX_COMMON_IOCTL_NUM+18), struct hw_delay)
+#define AUDIO_SET_HW_DELAY_TX	_IOW(AUDIO_IOCTL_MAGIC, \
+			(AUDIO_MAX_COMMON_IOCTL_NUM+19), struct hw_delay)
 #define	AUDIO_MAX_ACDB_IOCTL	(AUDIO_MAX_COMMON_IOCTL_NUM+30)
 
 /* ACDB structures */
@@ -72,26 +56,10 @@ struct sidetone_cal {
 	uint16_t	gain;
 };
 
-enum msm_spkr_prot_states {
-	MSM_SPKR_PROT_CALIBRATED,
-	MSM_SPKR_PROT_CALIBRATION_IN_PROGRESS,
-	MSM_SPKR_PROT_DISABLED,
-	MSM_SPKR_PROT_NOT_CALIBRATED
+struct hw_delay {
+	uint32_t num_entries;
+	void *delay_info;
 };
-
-struct msm_spk_prot_cfg {
-	int r0;
-	int t0;
-	uint32_t mode; /*0 - Start spk prot
-	1 - Start calib
-	2 - Disable spk prot*/
-};
-
-struct msm_spk_prot_status {
-	int r0;
-	int status;
-};
-
 /* For Real-Time Audio Calibration */
 #define AUDIO_GET_RTAC_ADM_INFO		_IOR(AUDIO_IOCTL_MAGIC, \
 			(AUDIO_MAX_ACDB_IOCTL+1), unsigned)
@@ -116,4 +84,4 @@ struct msm_spk_prot_status {
 
 #define	AUDIO_MAX_RTAC_IOCTL	(AUDIO_MAX_ACDB_IOCTL+20)
 
-#endif /* _LINUX_MSM_AUDIO_ACDB_H */
+#endif /* __MSM_AUDIO_ACDB_H */

@@ -1758,7 +1758,15 @@ static int voice_send_cvs_register_cal_cmd(struct voice_data *v)
 	struct cvs_register_cal_data_cmd cvs_reg_cal_cmd;
 	struct acdb_cal_block cal_block;
 	int ret = 0;
-	memset(&cvs_reg_cal_cmd, 0, sizeof(cvs_reg_cal_cmd));
+	void *apr_cvs;
+	u16 cvs_handle;
+	uint32_t cal_paddr;
+
+	/* get the cvs cal data */
+	get_all_vocstrm_cal(&cal_block);
+	if (cal_block.cal_size == 0 ||
+	    cal_block.cal_size > CVS_CAL_SIZE)
+		goto fail;
 
 	if (v == NULL) {
 		pr_err("%s: v is NULL\n", __func__);
@@ -1833,7 +1841,13 @@ static int voice_send_cvs_deregister_cal_cmd(struct voice_data *v)
 	struct cvs_deregister_cal_data_cmd cvs_dereg_cal_cmd;
 	struct acdb_cal_block cal_block;
 	int ret = 0;
-	memset(&cvs_dereg_cal_cmd, 0, sizeof(cvs_dereg_cal_cmd));
+	void *apr_cvs;
+	u16 cvs_handle;
+
+	get_all_vocstrm_cal(&cal_block);
+	if (cal_block.cal_size == 0 ||
+	    cal_block.cal_size > CVS_CAL_SIZE)
+		return 0;
 
 	if (v == NULL) {
 		pr_err("%s: v is NULL\n", __func__);
@@ -1890,7 +1904,15 @@ static int voice_send_cvp_register_dev_cfg_cmd(struct voice_data *v)
 	struct cvp_register_dev_cfg_cmd cvp_reg_dev_cfg_cmd;
 	struct acdb_cal_block cal_block;
 	int ret = 0;
-	memset(&cvp_reg_dev_cfg_cmd, 0, sizeof(cvp_reg_dev_cfg_cmd));
+	void *apr_cvp;
+	u16 cvp_handle;
+	uint32_t cal_paddr;
+
+	/* get all cvp cal data */
+	get_all_cvp_cal(&cal_block);
+	if (cal_block.cal_size == 0 ||
+	    cal_block.cal_size > CVP_CAL_SIZE)
+		goto fail;
 
 	if (v == NULL) {
 		pr_err("%s: v is NULL\n", __func__);
@@ -1961,7 +1983,14 @@ static int voice_send_cvp_deregister_dev_cfg_cmd(struct voice_data *v)
 	struct cvp_deregister_dev_cfg_cmd cvp_dereg_dev_cfg_cmd;
 	struct acdb_cal_block cal_block;
 	int ret = 0;
-	memset(&cvp_dereg_dev_cfg_cmd, 0, sizeof(cvp_dereg_dev_cfg_cmd));
+	void *apr_cvp;
+	u16 cvp_handle;
+	uint32_t cal_paddr;
+
+	get_all_cvp_cal(&cal_block);
+	if (cal_block.cal_size == 0 ||
+	    cal_block.cal_size > CVP_CAL_SIZE)
+		return 0;
 
 	if (v == NULL) {
 		pr_err("%s: v is NULL\n", __func__);
@@ -2020,7 +2049,15 @@ static int voice_send_cvp_register_cal_cmd(struct voice_data *v)
 	struct cvp_register_cal_data_cmd cvp_reg_cal_cmd;
 	struct acdb_cal_block cal_block;
 	int ret = 0;
-	memset(&cvp_reg_cal_cmd, 0, sizeof(cvp_reg_cal_cmd));
+	void *apr_cvs;
+	u16 cvs_handle;
+	uint32_t cal_paddr;
+
+	/* get all cvs cal data */
+	get_all_vocstrm_cal(&cal_block);
+	if (cal_block.cal_size == 0 ||
+	    cal_block.cal_size > CVS_CAL_SIZE)
+		goto fail;
 
 	if (v == NULL) {
 		pr_err("%s: v is NULL\n", __func__);
@@ -2095,7 +2132,14 @@ static int voice_send_cvp_deregister_cal_cmd(struct voice_data *v)
 	struct cvp_deregister_cal_data_cmd cvp_dereg_cal_cmd;
 	struct acdb_cal_block cal_block;
 	int ret = 0;
-	memset(&cvp_dereg_cal_cmd, 0, sizeof(cvp_dereg_cal_cmd));
+	void *apr_cvs;
+	u16 cvs_handle;
+	uint32_t cal_paddr;
+
+	get_all_vocstrm_cal(&cal_block);
+	if (cal_block.cal_size == 0 ||
+	    cal_block.cal_size > CVS_CAL_SIZE)
+		return 0;
 
 	if (v == NULL) {
 		pr_err("%s: v is NULL\n", __func__);
@@ -2151,7 +2195,15 @@ static int voice_send_cvp_register_vol_cal_cmd(struct voice_data *v)
 	struct cvp_register_vol_cal_data_cmd cvp_reg_vol_cal_cmd;
 	struct acdb_cal_block cal_block;
 	int ret = 0;
-	memset(&cvp_reg_vol_cal_cmd, 0, sizeof(cvp_reg_vol_cal_cmd));
+	void *apr_cvp;
+	u16 cvp_handle;
+	uint32_t cal_paddr;
+
+      /* get the cvp cal data */
+	get_all_vocproc_cal(&cal_block);
+	if (cal_block.cal_size == 0 ||
+	    cal_block.cal_size > CVP_CAL_SIZE)
+		goto fail;
 
 	if (v == NULL) {
 		pr_err("%s: v is NULL\n", __func__);
@@ -2229,7 +2281,13 @@ static int voice_send_cvp_deregister_vol_cal_cmd(struct voice_data *v)
 	struct cvp_deregister_vol_cal_data_cmd cvp_dereg_vol_cal_cmd;
 	struct acdb_cal_block cal_block;
 	int ret = 0;
-	memset(&cvp_dereg_vol_cal_cmd, 0, sizeof(cvp_dereg_vol_cal_cmd));
+	void *apr_cvp;
+	u16 cvp_handle;
+
+	get_all_vocproc_cal(&cal_block);
+	if (cal_block.cal_size == 0 ||
+	    cal_block.cal_size > CVP_CAL_SIZE)
+		return 0;
 
 	if (v == NULL) {
 		pr_err("%s: v is NULL\n", __func__);
@@ -2286,9 +2344,23 @@ static int voice_map_memory_physical_cmd(struct voice_data *v,
 					 uint32_t size,
 					 uint32_t token)
 {
-	struct vss_imemory_cmd_map_physical_t mvm_map_phys_cmd;
-	uint32_t *memtable;
+	struct cvp_register_vol_cal_table_cmd cvp_reg_cal_tbl_cmd;
+	struct acdb_cal_block vol_block;
+	struct acdb_cal_block voc_block;
+	struct acdb_cal_block cvp_block;
 	int ret = 0;
+	void *apr_cvp;
+	u16 cvp_handle;
+	uint32_t cal_paddr;
+
+	/* get the cvp vol cal data */
+	get_all_vocvol_cal(&vol_block);
+	get_all_vocproc_cal(&voc_block);
+	get_all_cvp_cal(&cvp_block);
+
+	if (vol_block.cal_size == 0 ||
+	    cvp_block.cal_size > CVP_CAL_SIZE)
+		goto fail;
 
 	if (v == NULL) {
 		pr_err("%s: v is NULL\n", __func__);
@@ -2380,8 +2452,19 @@ fail:
 
 static int voice_mem_map_cal_block(struct voice_data *v)
 {
-	int ret = 0;
+	struct cvp_deregister_vol_cal_table_cmd cvp_dereg_cal_tbl_cmd;
 	struct acdb_cal_block cal_block;
+	struct acdb_cal_block voc_block;
+	int ret = 0;
+	void *apr_cvp;
+	u16 cvp_handle;
+
+	get_all_vocvol_cal(&cal_block);
+	get_all_cvp_cal(&voc_block);
+
+	if (cal_block.cal_size == 0 ||
+	    voc_block.cal_size > CVP_CAL_SIZE)
+		return 0;
 
 	if (v == NULL) {
 		pr_err("%s: v is NULL\n", __func__);
