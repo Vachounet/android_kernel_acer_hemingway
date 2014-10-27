@@ -2316,8 +2316,16 @@ u32 vcd_handle_frame_done(
 
 	if (cctxt->decoding)
 		op_frm->vcd_frm.frame = transc->frame;
-	else
+	else {
 		transc->frame = op_frm->vcd_frm.frame;
+		if ((transc->flags & VCD_FRAME_FLAG_EOS) &&
+			!(op_frm->vcd_frm.flags & VCD_FRAME_FLAG_EOS)) {
+			op_frm->vcd_frm.flags |= VCD_FRAME_FLAG_EOS;
+			VCD_MSG_HIGH("%s: add EOS flag to the output "\
+				"from transc(0x%x)",
+				__func__, (u32)transc);
+		}
+	}
 	transc->frame_done = true;
 
 	if (transc->input_done && transc->frame_done) {
@@ -3096,8 +3104,10 @@ u32 vcd_req_perf_level(
 		return -EINVAL;
 	}
 	res_trk_perf_level = get_res_trk_perf_level(perf_level->level);
-	if (res_trk_perf_level < 0) {
+	if ((int)res_trk_perf_level < 0) {
 		rc = -ENOTSUPP;
+		VCD_MSG_ERROR("%s: unsupported perf level(%d)",
+			__func__, res_trk_perf_level);
 		goto perf_level_not_supp;
 	}
 	turbo_perf_level = get_res_trk_perf_level(VCD_PERF_LEVEL_TURBO);
@@ -3108,6 +3118,10 @@ u32 vcd_req_perf_level(
 		if (res_trk_perf_level == turbo_perf_level)
 			cctxt->is_turbo_enabled = true;
 	}
+	VCD_MSG_HIGH("%s: client perf level = %u, "\
+		"perf_set_by_client = %u, is_turbo_enabled = %u",
+		__func__, cctxt->reqd_perf_lvl, cctxt->perf_set_by_client,
+		cctxt->is_turbo_enabled);
 perf_level_not_supp:
 	return rc;
 }

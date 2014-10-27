@@ -518,6 +518,10 @@ struct venc_range {
 	unsigned long	step_size;
 };
 
+/*IOCTL params:SET: InputData - NULL, OutputData - NULL.*/
+#define VEN_IOCTL_SET_VUI_BITSTREAM_RESTRICT_FLAG \
+	_IO(VEN_IOCTLBASE_ENC, 52)
+
 struct venc_switch{
 	unsigned char	status;
 };
