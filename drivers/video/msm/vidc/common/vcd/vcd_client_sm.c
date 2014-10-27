@@ -983,7 +983,7 @@ static void vcd_clnt_cb_in_run
 	case VCD_EVT_IND_INFO_LTRUSE_FAILED:
 		{
 			rc = vcd_handle_ltr_use_failed(cctxt,
-					payload, sz, status);
+				payload, sz, status);
 			break;
 		}
 	default:

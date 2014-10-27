@@ -1182,7 +1182,7 @@ void ddl_handle_ltr_in_framedone(struct ddl_client_context *ddl)
 	if (ltr_control->storing) {
 		ltr_control->ltr_list[ltr_control->storing_idx].ltr_id =
 			ltr_control->curr_ltr_id;
-		DDL_MSG_MED("Encoder output stores LTR ID %d into entry %d",
+		DDL_MSG_LOW("Encoder output stores LTR ID %d into entry %d",
 			ltr_control->curr_ltr_id, ltr_control->storing_idx);
 		ltr_control->meta_data_reqd = true;
 		ltr_control->storing = false;
@@ -1220,10 +1220,10 @@ s32 ddl_encoder_ltr_control(struct ddl_client_context *ddl)
 			encoder->i_period.p_frames) &&
 			(!ltr_ctrl->out_frame_cnt_before_next_idr));
 		if (finite_i_period || infinite_i_period) {
-			DDL_MSG_HIGH("%s: Intra period reached. "\
-			"finite_i_period (%u), infinite_i_period (%u)",
-			__func__, (u32)finite_i_period,
-			(u32)infinite_i_period);
+			DDL_MSG_LOW("%s: Intra period reached. "\
+				"finite_i_period (%u), infinite_i_period (%u)",
+				__func__, (u32)finite_i_period,
+				(u32)infinite_i_period);
 			intra_period_reached = true;
 		}
 		if (intra_period_reached ||
@@ -1244,12 +1244,12 @@ s32 ddl_encoder_ltr_control(struct ddl_client_context *ddl)
 		if (!(ltr_ctrl->out_frame_cnt_before_next_idr %
 			ltr_ctrl->ltr_period)) {
 			s32 idx;
-			DDL_MSG_HIGH("%s: reached LTR period "\
+			DDL_MSG_LOW("%s: reached LTR period "\
 				"out_frame_cnt_before_next_idr %d",
 				__func__, ltr_ctrl->\
 				out_frame_cnt_before_next_idr);
 			idx = ddl_find_oldest_ltr_not_in_use(
-					ltr_ctrl);
+				ltr_ctrl);
 			if (idx >= 0) {
 				ltr_ctrl->storing = true;
 				ltr_ctrl->storing_idx = idx;
@@ -1261,9 +1261,9 @@ s32 ddl_encoder_ltr_control(struct ddl_client_context *ddl)
 		}
 	}
 	if (encoder->intra_frame_insertion) {
-		DDL_MSG_HIGH("%s: I-frame insertion requested, "\
+		DDL_MSG_LOW("%s: I-frame insertion requested, "\
 			"delay LTR store for one frame", __func__);
-		ltr_ctrl->store_for_intraframe_insertion = true;
+			ltr_ctrl->store_for_intraframe_insertion = true;
 	}
 	if (ltr_ctrl->pending_chg_ltr_useframes) {
 		ltr_ctrl->out_frame_cnt_to_use_this_ltr =
@@ -1282,33 +1282,32 @@ s32 ddl_encoder_ltr_control(struct ddl_client_context *ddl)
 		ltr_ctrl->using = true;
 		ltr_ctrl->use_ltr_reqd = false;
 	} else {
-		DDL_MSG_HIGH("%s: use_ltr_reqd skipped", __func__);
+		DDL_MSG_LOW("%s: use_ltr_reqd skipped", __func__);
 	}
 
 	return vcd_status;
 }
 
-
 s32 ddl_allocate_ltr_list(struct ddl_ltr_encoding_type *ltr_control)
 {
 	s32 vcd_status = VCD_S_SUCCESS;
 
-	DDL_MSG_LOW("%s: lrr_cout = %u", __func__, ltr_control->ltr_count);
+	DDL_MSG_LOW("%s: ltr_cout = %u", __func__, ltr_control->ltr_count);
 	if (!ltr_control->ltr_list) {
 		if (ltr_control->ltr_count) {
 			ltr_control->ltr_list = (struct ddl_ltrlist *)
 				kmalloc(sizeof(struct ddl_ltrlist)*
-					ltr_control->ltr_count, GFP_KERNEL);
+				ltr_control->ltr_count, GFP_KERNEL);
 			if (!ltr_control->ltr_list) {
-				DDL_MSG_ERROR("ddl_allocate_ltr_list failed");
+				DDL_MSG_LOW("ddl_allocate_ltr_list failed");
 				vcd_status = VCD_ERR_ALLOC_FAIL;
 			}
 		} else {
-			DDL_MSG_ERROR("%s: failed, zero LTR count", __func__);
+			DDL_MSG_LOW("%s: failed, zero LTR count", __func__);
 			vcd_status = VCD_ERR_FAIL;
 		}
 	} else {
-		DDL_MSG_HIGH("WARN: ltr_list already allocated");
+		DDL_MSG_LOW("WARN: ltr_list already allocated");
 	}
 
 	return vcd_status;
@@ -1346,6 +1345,8 @@ s32 ddl_find_oldest_ltr_not_in_use(struct ddl_ltr_encoding_type *ltr_control)
 	s32 found_idx = -1;
 	u32 i;
 
+	DDL_MSG_LOW("%s:", __func__);
+
 	if (ltr_control->ltr_list) {
 		if (ltr_control->ltr_count == 1)
 			found_idx = 0;
@@ -1376,6 +1377,8 @@ s32 ddl_find_ltr_in_use(struct ddl_ltr_encoding_type *ltr_control)
 	s32 found_idx = -1;
 	u32 i;
 
+	DDL_MSG_LOW("%s:", __func__);
+
 	if (ltr_control->ltr_list) {
 		for (i = 0; i < ltr_control->ltr_count; i++) {
 			if (ltr_control->ltr_list[i].ltr_in_use == true)
@@ -1393,6 +1396,8 @@ s32 ddl_find_ltr_from_list(struct ddl_ltr_encoding_type *ltr_control,
 	s32 found_idx = -1;
 	u32 i;
 
+	DDL_MSG_LOW("%s:", __func__);
+
 	if (ltr_control->ltr_list) {
 		for (i = 0; i < ltr_control->ltr_count; i++) {
 			if (ltr_control->ltr_list[i].ltr_id == ltr_id) {
@@ -1401,10 +1406,10 @@ s32 ddl_find_ltr_from_list(struct ddl_ltr_encoding_type *ltr_control,
 			}
 		}
 	} else {
-		DDL_MSG_ERROR("%s: ltr_list is NULL", __func__);
+		DDL_MSG_LOW("%s: ltr_list is NULL", __func__);
 	}
 
-	DDL_MSG_LOW("%s: found_idx = %d", __func__, found_idx);
+	DDL_MSG_ERROR("%s: found_idx = %d", __func__, found_idx);
 	return found_idx;
 }
 
@@ -1416,7 +1421,7 @@ s32 ddl_use_ltr_from_list(struct ddl_ltr_encoding_type *ltr_control,
 
 	DDL_MSG_LOW("%s: ltr_idx = %u", __func__, ltr_idx);
 	if (ltr_idx > ltr_control->ltr_count) {
-		DDL_MSG_ERROR("%s: fail, idx %d larger than "\
+		DDL_MSG_LOW("%s: fail, idx %d larger than "\
 			"the list array count %d", __func__,
 			ltr_idx, ltr_control->ltr_count);
 		vcd_status = VCD_ERR_FAIL;
@@ -1438,16 +1443,16 @@ void ddl_encoder_use_ltr_fail_callback(struct ddl_client_context *ddl)
 	struct ddl_encoder_data *encoder = &(ddl->codec_data.encoder);
 	struct ddl_context *ddl_context = ddl->ddl_context;
 
-	DDL_MSG_ERROR("%s: LTR use failed, callback "\
+	DDL_MSG_LOW("%s: LTR use failed, callback "\
 		"requested with LTR ID %d", __func__,
 		encoder->ltr_control.failed_use_cmd.ltr_id);
 
 	ddl_context->ddl_callback(VCD_EVT_IND_INFO_LTRUSE_FAILED,
-			VCD_ERR_ILLEGAL_PARM,
-			&(encoder->ltr_control.failed_use_cmd),
-			sizeof(struct vcd_property_ltruse_type),
-			(u32 *)ddl,
-			ddl->client_data);
+		VCD_ERR_ILLEGAL_PARM,
+		&(encoder->ltr_control.failed_use_cmd),
+		sizeof(struct vcd_property_ltruse_type),
+		(u32 *)ddl,
+		ddl->client_data);
 }
 
 void ddl_print_ltr_list(struct ddl_ltr_encoding_type *ltr_control)
@@ -1455,7 +1460,7 @@ void ddl_print_ltr_list(struct ddl_ltr_encoding_type *ltr_control)
 	u32 i;
 
 	for (i = 0; i < ltr_control->ltr_count; i++) {
-		DDL_MSG_MED("%s: ltr_id: %d, ltr_in_use: %d",
+		DDL_MSG_LOW("%s: ltr_id: %d, ltr_in_use: %d",
 			__func__, ltr_control->ltr_list[i].ltr_id,
 			ltr_control->ltr_list[i].ltr_in_use);
 	}
