@@ -220,63 +220,6 @@ static int msm_pcm_playback_prepare(struct snd_pcm_substream *substream)
 	return 0;
 }
 
-static int msm_pcm_restart(struct snd_pcm_substream *substream)
-{
-	struct snd_pcm_runtime *runtime = substream->runtime;
-	struct msm_audio *prtd = runtime->private_data;
-	struct audio_aio_write_param param;
-	struct audio_buffer *buf = NULL;
-	struct output_meta_data_st output_meta_data;
-
-	pr_err("%s\n", __func__);
-	memset(&output_meta_data, 0x0, sizeof(struct output_meta_data_st));
-	if (runtime->render_flag & SNDRV_RENDER_STOPPED) {
-		buf = prtd->audio_client->port[IN].buf;
-
-		pr_debug("%s:writing %d bytes of buffer[%d] to dsp 2\n",
-				__func__, prtd->pcm_count, prtd->out_head);
-		pr_debug("%s:writing buffer[%d] from 0x%08x\n",
-				__func__, prtd->out_head,
-				((unsigned int)buf[0].phys
-				+ (prtd->out_head * prtd->pcm_count)));
-
-		if (prtd->meta_data_mode) {
-			memcpy(&output_meta_data, (char *)(buf->data +
-				prtd->out_head * prtd->pcm_count),
-				sizeof(struct output_meta_data_st));
-			param.len = output_meta_data.frame_size;
-		} else {
-			param.len = prtd->pcm_count;
-		}
-		pr_debug("meta_data_length: %d, frame_length: %d\n",
-			 output_meta_data.meta_data_length,
-			 output_meta_data.frame_size);
-		pr_debug("timestamp_msw: %d, timestamp_lsw: %d\n",
-			 output_meta_data.timestamp_msw,
-			 output_meta_data.timestamp_lsw);
-
-		param.paddr = (unsigned long)buf[0].phys +
-				(prtd->out_head * prtd->pcm_count) +
-				output_meta_data.meta_data_length;
-		param.msw_ts = output_meta_data.timestamp_msw;
-		param.lsw_ts = output_meta_data.timestamp_lsw;
-		param.flags = NO_TIMESTAMP;
-		param.uid =  (unsigned long)buf[0].phys +
-				(prtd->out_head * prtd->pcm_count +
-				output_meta_data.meta_data_length);
-		if (q6asm_async_write(prtd->audio_client, &param) < 0)
-			pr_err("%s:q6asm_async_write failed\n",
-			__func__);
-		else
-			prtd->out_head =
-				(prtd->out_head + 1) & (runtime->periods - 1);
-		atomic_set(&prtd->pending_buffer, 0);
-		runtime->render_flag &= ~SNDRV_RENDER_STOPPED;
-		return 0;
-	}
-	return 0;
-}
-
 static int msm_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 {
 	int ret = 0;
